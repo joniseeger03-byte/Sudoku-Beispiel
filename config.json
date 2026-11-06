@@ -1,0 +1,31 @@
+{
+  "rollen": {
+    "recherche_a": "openrouter",
+    "recherche_b": "openrouter",
+    "pruefung": "groq",
+    "spezifikation": "groq",
+    "engine": "groq",
+    "ui": "openrouter",
+    "tests": "groq",
+    "testcheck": "groq",
+    "korrektur": "groq"
+  },
+  "anbieter": {
+    "groq": {
+      "url": "https://api.groq.com/openai/v1",
+      "key": "GROQ_API_KEY",
+      "modell": "openai/gpt-oss-120b",
+      "parameter": {
+        "reasoning_effort": "low",
+        "max_completion_tokens": 16000
+      }
+    },
+    "openrouter": {
+      "url": "https://openrouter.ai/api/v1",
+      "key": "OPENROUTER_API_KEY",
+      "modell": "google/gemma-3-27b-it"
+    }
+  },
+  "max_runden": 3,
+  "test_zeitlimit": 90
+}

@@ -1,0 +1,91 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "0 Alles zurücksetzen",
+      "type": "shell",
+      "command": "python3 orchestrator/run.py --zuruecksetzen",
+      "windows": {
+        "command": "python orchestrator/run.py --zuruecksetzen"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "focus": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "1 Dashboard starten",
+      "type": "shell",
+      "command": "python3 orchestrator/dashboard.py",
+      "windows": {
+        "command": "python orchestrator/dashboard.py"
+      },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "2 Demo ohne API-Keys",
+      "type": "shell",
+      "command": "python3 orchestrator/run.py --demo",
+      "windows": {
+        "command": "python orchestrator/run.py --demo"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "2b Verbindung testen",
+      "type": "shell",
+      "command": "python3 orchestrator/run.py --check",
+      "windows": {
+        "command": "python orchestrator/run.py --check"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "3 Echten Lauf starten",
+      "type": "shell",
+      "command": "python3 orchestrator/run.py",
+      "windows": {
+        "command": "python orchestrator/run.py"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "4 Lauf freigeben",
+      "type": "shell",
+      "command": "python3 orchestrator/run.py --freigabe",
+      "windows": {
+        "command": "python orchestrator/run.py --freigabe"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "5 Orchestrator-Tests",
+      "type": "shell",
+      "command": "python3 -m unittest -v orchestrator.test_orchestrator orchestrator.test_no_claude_provider",
+      "windows": {
+        "command": "python -m unittest -v orchestrator.test_orchestrator orchestrator.test_no_claude_provider"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

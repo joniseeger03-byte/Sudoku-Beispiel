@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agentenlauf</title>
+<style>
+:root { --bg:#e9eff5; --panel:#fbfcfe; --ink:#14233b; --muted:#54647b; --line:#c4cfdc; --heavy:#14233b; --accent:#2343c9; --soft:#dfe6fb;
+  --ok:#0d7a59; --oksoft:#dcf1e8; --bad:#bd2445; --badsoft:#fbe3e8; --warn:#9a5b00; --warnsoft:#fbecd2; --code:#eef2f7;
+  --c1:#2343c9; --c2:#0d7a59; --c3:#9a5b00; --c4:#7a3fb0; --c5:#bd2445; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1623; --panel:#172132; --ink:#e7edf6; --muted:#9eaec4; --line:#33445c; --heavy:#aebdd2; --accent:#93a9ff; --soft:#24335f;
+  --ok:#5ad2aa; --oksoft:#173d33; --bad:#ff8fa5; --badsoft:#4b1d2a; --warn:#f2bb63; --warnsoft:#463414; --code:#111a28;
+  --c1:#93a9ff; --c2:#5ad2aa; --c3:#f2bb63; --c4:#c9a0ff; --c5:#ff8fa5; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Segoe UI", sans-serif; }
+button, select { font: inherit; color: inherit; }
+code, pre, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.wrap { max-width: 1280px; margin: auto; padding: 20px 16px 48px; display: grid; gap: 18px; }
+
+/* Kopf */
+.top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+h1 { margin: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.badge { font-size: .78rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
+.badge.live { background: var(--soft); color: var(--accent); }
+.badge.demo { background: var(--warnsoft); color: var(--warn); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: inline-flex; border: 1.5px solid var(--heavy); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--panel); padding: 6px 12px; cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--panel); }
+select, a.btn, button.btn { background: var(--panel); border: 1.5px solid var(--heavy); border-radius: 6px; padding: 6px 10px; text-decoration: none; cursor: pointer; }
+a.btn.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.startline { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .9rem; color: var(--muted); }
+.cmd { background: var(--ink); color: var(--panel); padding: 4px 10px; border-radius: 4px; font-size: .85rem; }
+.cmd::before { content: "$ "; opacity: .6; }
+.runstate { font-weight: 600; }
+.runstate.run { color: var(--accent); } .runstate.ok { color: var(--ok); } .runstate.fail { color: var(--bad); } .runstate.wait { color: var(--warn); }
+
+/* Teil 1: Schritte */
+.steps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 2px solid var(--heavy); background: var(--panel); border-radius: 6px; overflow: hidden; }
+.step { padding: 10px 12px; border-right: 1px solid var(--line); cursor: pointer; background: none; border-top: 0; border-bottom: 4px solid transparent; border-left: 0; text-align: left; min-width: 0; }
+.step:last-child { border-right: 0; }
+.step .n { font-size: .72rem; color: var(--muted); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+.step .t { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step .s { font-size: .8rem; color: var(--muted); }
+.step[data-s=run] { background: var(--soft); } .step[data-s=run] .s { color: var(--accent); font-weight: 600; }
+.step[data-s=ok] .s { color: var(--ok); font-weight: 600; }
+.step[data-s=fail] { background: var(--badsoft); } .step[data-s=fail] .s { color: var(--bad); font-weight: 600; }
+.step.sel { border-bottom-color: var(--ink); }
+@media (max-width: 760px) { .steps { grid-template-columns: repeat(4, minmax(0,1fr)); } .step { border-bottom: 1px solid var(--line); } }
+
+/* Teil 2: Graph */
+.graphbox { background: var(--panel); border: 2px solid var(--heavy); border-radius: 6px; overflow-x: auto; }
+#graph { display: block; min-width: 900px; width: 100%; height: auto; }
+#graph .band { fill: var(--bg); } #graph .band.alt { fill: var(--panel); }
+#graph .bandlabel { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+#graph .edge { fill: none; stroke: var(--line); stroke-width: 1.6; }
+#graph .edge.on { stroke: var(--heavy); stroke-width: 2; }
+#graph .edge.loop { stroke-dasharray: 5 4; }
+#graph .edge.loop.on { stroke: var(--warn); }
+#graph .elabel { font-size: 10.5px; fill: var(--muted); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+#graph .elabel.on { fill: var(--ink); font-weight: 600; }
+#graph .elabel.loop.on { fill: var(--warn); }
+#graph .node { cursor: pointer; }
+#graph .node rect { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+#graph .node.s-run rect { fill: var(--soft); stroke: var(--accent); stroke-width: 2.5; animation: pulse 1.2s ease-in-out infinite; }
+#graph .node.s-ok rect { fill: var(--oksoft); stroke: var(--ok); }
+#graph .node.s-fail rect { fill: var(--badsoft); stroke: var(--bad); }
+#graph .node.sel rect { stroke: var(--ink); stroke-width: 3; }
+#graph .node .t { font-size: 13px; font-weight: 600; fill: var(--ink); }
+#graph .node .m { font-size: 10px; fill: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+#graph .node .st { font-size: 10.5px; fill: var(--muted); }
+#graph .node.s-run .st { fill: var(--accent); font-weight: 600; }
+#graph .node.s-ok .st { fill: var(--ok); } #graph .node.s-fail .st { fill: var(--bad); font-weight: 600; }
+#graph .node rect.rbadge { fill: var(--warn); stroke: none; animation: none; } #graph .rbadge-t { fill: var(--panel); font-size: 10px; font-weight: 700; }
+@keyframes pulse { 50% { stroke-opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { #graph .node.s-run rect { animation: none; } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--heavy); vertical-align: middle; margin-right: 6px; }
+.legend i.loop { border-top: 2px dashed var(--warn); }
+
+/* Teil 2: Live-Wand */
+.wallhead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.wallhead h2, .panelhead h2, .loghead h2 { margin: 0; font-size: 1rem; }
+.hint { font-size: .82rem; color: var(--muted); }
+.wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; min-width: 0; cursor: pointer; display: flex; flex-direction: column; }
+.card.run { border-color: var(--accent); }
+.card.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+.card header { padding: 6px 10px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; }
+.card header b { white-space: nowrap; } .card header span { color: var(--muted); font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card pre { margin: 0; padding: 8px 10px; height: 170px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .74rem; line-height: 1.4; }
+.card.done pre { opacity: .7; }
+
+/* Detail-Panel */
+.panel { background: var(--panel); border: 2px solid var(--heavy); border-radius: 6px; min-width: 0; }
+.panelhead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1.5px solid var(--heavy); }
+.panelhead .who { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.panelhead .sub { font-size: .82rem; color: var(--muted); }
+.chip { font-size: .75rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); }
+.chip.run { color: var(--accent); border-color: var(--accent); } .chip.ok { color: var(--ok); border-color: var(--ok); } .chip.fail { color: var(--bad); border-color: var(--bad); }
+.rounds { display: flex; gap: 4px; flex-wrap: wrap; }
+.rounds button { font-size: .75rem; padding: 2px 8px; border: 1px solid var(--line); background: var(--bg); border-radius: 4px; cursor: pointer; }
+.rounds button.on { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.panelbody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.panelbody > div { min-width: 0; }
+.panelbody > div:first-child { border-right: 1.5px solid var(--heavy); }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; color: var(--muted); font-size: .88rem; }
+.tabs button.on { background: var(--ink); color: var(--panel); }
+.tabs .lbl { margin-left: auto; align-self: center; font-size: .75rem; color: var(--muted); padding-right: 6px; }
+.pane { padding: 14px; height: 470px; overflow: auto; }
+.pane.out { font-size: .92rem; }
+.pane pre.raw { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .82rem; line-height: 1.5; }
+.filehead { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 8px; font-size: .85rem; }
+.filehead code { font-weight: 600; }
+.box { background: var(--code); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; }
+.note { font-size: .85rem; color: var(--muted); margin: 0 0 10px; }
+.note.warn { color: var(--warn); }
+.compose { display: flex; height: 22px; border-radius: 4px; overflow: hidden; margin: 6px 0 4px; border: 1px solid var(--line); }
+.compose span { min-width: 3px; }
+.ctx { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.ctx details { border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.ctx summary { cursor: pointer; padding: 6px 10px; display: flex; gap: 8px; align-items: center; font-size: .86rem; }
+.ctx summary .dot { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.ctx summary .sz { margin-left: auto; color: var(--muted); font-size: .76rem; white-space: nowrap; }
+.ctx pre { margin: 0; padding: 8px 10px; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .76rem; border-top: 1px solid var(--line); }
+.hl { list-style: none; margin: 0; padding: 0; }
+.hl li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .87rem; display: grid; grid-template-columns: 4.6em minmax(0,1fr); gap: 2px 8px; }
+.hl time { color: var(--muted); font-size: .78rem; }
+.hl code { grid-column: 2; font-size: .76rem; background: var(--code); padding: 2px 6px; border-radius: 3px; overflow-wrap: anywhere; justify-self: start; }
+.hl .kante { color: var(--warn); font-weight: 600; }
+.empty { color: var(--muted); }
+@media (max-width: 860px) { .panelbody { grid-template-columns: minmax(0, 1fr); } .panelbody > div:first-child { border-right: 0; border-bottom: 1.5px solid var(--heavy); } .pane { height: 380px; } }
+
+/* Markdown */
+.md h1 { font-size: 1.3rem; margin: 0 0 10px; } .md h2 { font-size: 1.05rem; margin: 16px 0 6px; } .md h3 { font-size: .95rem; margin: 12px 0 4px; }
+.md p, .md ul, .md ol, .md pre { margin: 0 0 10px; }
+.md code { font-size: .86em; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+.md pre { background: var(--code); padding: 10px; overflow-x: auto; font-size: .8rem; } .md pre code { background: none; padding: 0; }
+.md table { border-collapse: collapse; width: 100%; font-size: .88rem; margin-bottom: 10px; }
+.md th, .md td { text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+
+/* Protokoll */
+.loghead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.log { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; border-top: 1.5px solid var(--heavy); font-size: .88rem; background: var(--panel); }
+.log li { display: grid; grid-template-columns: 5.2em 8.5em minmax(0,1fr) minmax(0,16em); gap: 8px; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+.log time { color: var(--muted); font-size: .8rem; }
+.log b { font-weight: 600; } .log .fail { color: var(--bad); } .log .harness { color: var(--muted); } .log .kante { color: var(--warn); font-weight: 600; }
+.log .detail { color: var(--muted); font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .log li { grid-template-columns: 4.6em minmax(0,1fr); } .log .detail, .log li > b { display: none; } }
+/* Teil 2: Zeitleiste */
+.tl { background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; padding: 8px 12px 10px; }
+.tlrow { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 10px; align-items: center; min-height: 26px; cursor: pointer; }
+.tlrow:hover .tlname { color: var(--accent); }
+.tlrow.sel .tlname { font-weight: 700; }
+.tlname { font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tlname small { color: var(--muted); }
+.track { position: relative; height: 20px; }
+.bar { position: absolute; top: 2px; height: 16px; border-radius: 3px; min-width: 3px; background: var(--ok); color: var(--panel); font-size: .68rem; line-height: 16px; padding: 0 5px; white-space: nowrap; overflow: hidden; }
+.bar.run { background: var(--accent); background-image: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255,255,255,.22) 6px 12px); }
+.bar.fail { background: var(--bad); } .bar.skript { background: var(--muted); } .bar.skript.fail { background: var(--bad); }
+.axis { position: relative; height: 18px; margin-left: calc(10.5em + 10px); border-top: 1px solid var(--line); margin-top: 4px; }
+.axis span { position: absolute; top: 2px; font-size: .68rem; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
+.barlbl { position: absolute; top: 2px; font-size: .7rem; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.barlbl.left { transform: translateX(-100%); }
+.log .warn, .hl .warn { color: var(--warn); font-weight: 600; }
+.log .warn::before, .hl .warn::before { content: "\26A0  "; }
+#graph .warnmark { fill: var(--warn); } #graph .warnmark-t { fill: var(--panel); font-size: 11px; font-weight: 800; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Agentenlauf <span class="badge" id="modus" hidden></span></h1>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Ansicht">
+        <button id="t1" title="Taste 1">Teil 1 · Ein Agent</button>
+        <button id="t2" title="Taste 2">Teil 2 · Graph</button>
+      </div>
+      <button class="btn" id="follow" title="Taste F">Live folgen</button>
+      <select id="run" aria-label="Lauf wählen"></select>
+      <a class="btn primary" id="play" hidden target="_blank" rel="noopener">Ergebnis spielen</a>
+    </div>
+  </div>
+  <div class="startline" id="startline"></div>
+
+  <section id="v1"><div class="steps" id="steps"></div></section>
+
+  <section id="v2" hidden>
+    <div class="graphbox">
+      <svg id="graph" role="img" aria-label="Ablauf als Graph"></svg>
+      <div class="legend"><span><i></i>Kante genommen</span><span><i class="loop"></i>Schleife zurück, mit Anzahl</span><span>Blau pulsierend: arbeitet gerade</span><span>Orange ! = Harness hat eingegriffen</span><span>Klick auf einen Knoten zeigt Details</span></div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="wallhead"><h2>Zeitleiste</h2><span class="hint">Ein Balken je Modell-Aufruf oder Test-Gate · übereinander = gleichzeitig</span></div>
+      <div class="tl" id="tl"></div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="wallhead"><h2 id="wallTitle">Live</h2><span class="hint" id="wallHint"></span></div>
+      <div class="wall" id="wall"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel">
+    <div class="panelhead"><div class="who" id="who"></div><div class="rounds" id="rounds"></div></div>
+    <div class="panelbody">
+      <div>
+        <div class="tabs" id="tabs">
+          <button data-t="prompt">Prompt</button><button data-t="kontext">Kontext</button><button data-t="aufruf">Aufruf</button><button data-t="harness">Harness</button>
+          <span class="lbl">Was der Agent bekommt</span>
+        </div>
+        <div class="pane" id="left"></div>
+      </div>
+      <div>
+        <div class="tabs"><button class="on">Ausgabe</button><span class="lbl" id="outlbl"></span></div>
+        <div class="pane out" id="out"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="loghead"><h2>Protokoll</h2><span class="hint" id="loghint"></span></div>
+    <ol class="log" id="log"></ol>
+  </section>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const inline = s => esc(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+function md(src) {
+  const L = (src || '').trim().split(/\r?\n/), o = [];
+  for (let i = 0; i < L.length;) {
+    const l = L[i];
+    if (!l.trim()) { i++; continue; }
+    if (l.startsWith('```')) { const c = []; for (i++; i < L.length && !L[i].startsWith('```'); i++) c.push(L[i]); i++; o.push(`<pre><code>${esc(c.join('\n'))}</code></pre>`); }
+    else if (/^#{1,6} /.test(l)) { const n = Math.min(l.indexOf(' '), 3); o.push(`<h${n}>${inline(l.replace(/^#+ /,''))}</h${n}>`); i++; }
+    else if (l.startsWith('|')) { const r = []; for (; i < L.length && L[i].startsWith('|'); i++) r.push(L[i].replace(/^\||\|\s*$/g,'').split('|').map(c => c.trim())); o.push('<table><thead><tr>' + r[0].map(c => `<th>${inline(c)}</th>`).join('') + '</tr></thead><tbody>' + r.slice(2).map(x => '<tr>' + x.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>'); }
+    else if (/^(\s*[-*] |\d+\. )/.test(l)) { const t = /^\d/.test(l) ? 'ol' : 'ul', it = []; for (; i < L.length && /^(\s*[-*] |\d+\. )/.test(L[i]); i++) it.push(`<li>${inline(L[i].replace(/^(\s*[-*] |\d+\. )/,''))}</li>`); o.push(`<${t}>${it.join('')}</${t}>`); }
+    else { const p = []; for (; i < L.length && L[i].trim() && !/^(#|\||\s*[-*] |\d+\. |```)/.test(L[i]); i++) p.push(inline(L[i])); if (!p.length) { p.push(inline(L[i])); i++; } o.push(`<p>${p.join('<br>')}</p>`); }
+  }
+  return o.join('');
+}
+const LABEL = { wait: 'wartet', run: 'läuft', ok: 'fertig', fail: 'Fehler' };
+const ART = { modell: 'Sprachmodell', skript: 'Skript, kein Modell', mensch: 'Du' };
+const COLORS = ['var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+const kb = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + ' k' : String(n);
+
+let G = null, D = null, current = null, follow = true;
+let teil = location.hash === '#teil2' ? 2 : 1, tab = 'prompt';
+let selK = null, selA = null;   // gewählter Knoten und (optional) fester Aufruf
+const records = {};              // volle Aufruf-Daten (Prompt, Kontext), unveränderlich
+
+// ---------------------------------------------------------------- Ableitungen aus den Events
+const known = e => G.knoten[e.knoten];
+function stateOf(k) { let s = 'wait'; for (const e of D.events) if (e.knoten === k && LABEL[e.status]) s = e.status; return s; }
+function callsOf(k) { return Object.values(D.aufrufe).filter(a => a.knoten === k).sort((a, b) => a.id.localeCompare(b.id)); }
+function phaseOf(k) { return G.knoten[k].phase; }
+function phaseNodes(p) { return Object.keys(G.knoten).filter(k => phaseOf(k) === p); }
+function phaseTitle(p) { return (G.phasen.find(x => x.id === p) || {}).titel || p; }
+function phaseState(p) {
+  const ks = phaseNodes(p);
+  if (ks.some(k => stateOf(k) === 'run')) return 'run';
+  let s = 'wait'; for (const e of D.events) if (ks.includes(e.knoten) && LABEL[e.status]) s = e.status;
+  return s;
+}
+function rounds(k) { return k === 'gate' ? D.events.filter(e => e.knoten === 'gate' && e.status === 'run').length : callsOf(k).length; }
+function kantenCount(a, b) { return D.events.filter(e => e.status === 'kante' && e.von === a && e.nach === b).length; }
+function runState() {
+  const last = D.events[D.events.length - 1];
+  if (!last) return ['run', 'startet'];
+  if (last.knoten === 'orchestrator') return ['fail', last.text];
+  if (last.knoten === 'freigabe' && last.status === 'run') return ['wait', 'wartet auf deine Freigabe'];
+  if (last.knoten === 'freigabe' && last.status === 'ok') return ['ok', 'freigegeben, in main'];
+  return ['run', 'läuft'];
+}
+function autoSelect() {
+  const ev = D.events.filter(e => known(e) && LABEL[e.status]);
+  if (!ev.length) return;
+  if (selK && stateOf(selK) === 'run') return;            // aktueller Agent arbeitet noch: bleiben
+  const running = ev.filter(e => e.status === 'run' && stateOf(e.knoten) === 'run');
+  selK = (running.length ? running[running.length - 1] : ev[ev.length - 1]).knoten;
+  selA = null;
+}
+function modelLabel(k) {
+  const a = callsOf(k).pop(); if (a) return `${a.anbieter} · ${a.modell}`;
+  const r = (D.start.rollen || {})[k]; return r ? `${r.anbieter} · ${r.modell}` : '';
+}
+const short = s => s.length > 19 ? s.slice(0, 18) + '…' : s;
+// Tokens grob geschätzt: etwa 4 Zeichen pro Token
+const tokIn = a => Math.round(((a.prompt_zeichen || 0) + (a.kontext || []).reduce((n, c) => n + c.zeichen, 0)) / 4);
+const tokOut = a => Math.round((a.antwort_zeichen || (D.live[a.id] || '').length) / 4);
+const warned = k => D.events.some(e => e.knoten === k && e.warnung);
+function tsec(e) {
+  if (e.t) return e.t;
+  const d = new Date(D.start.zeit || Date.now()), [h, m, s] = e.zeit.split(':').map(Number);
+  d.setHours(h, m, s, 0); return d.getTime() / 1000;
+}
+
+// ---------------------------------------------------------------- Kopf
+function renderHead() {
+  const s = D.start || {};
+  $('modus').hidden = !s.modus;
+  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : 'Demo: vorbereitete Antworten';
+  $('modus').className = 'badge ' + (s.modus || '');
+  $('play').hidden = !D.ergebnis; $('play').href = `/ergebnis/${current}/index.html`;
+  const [st, txt] = runState();
+  const waiting = st === 'wait' ? ` <span>Freigeben mit</span> <code class="cmd">python orchestrator/run.py --freigabe</code>` : '';
+  const calls = Object.values(D.aufrufe), tin = calls.reduce((n, a) => n + tokIn(a), 0), tout = calls.reduce((n, a) => n + tokOut(a), 0);
+  const tok = calls.length ? ` <span title="geschätzt: 4 Zeichen ≈ 1 Token">${calls.length} Modell-Aufrufe · ≈ ${kb(tin)} Tokens rein, ${kb(tout)} raus</span>` : '';
+  $('startline').innerHTML = s.befehl
+    ? `<span>Gestartet mit</span> <code class="cmd">${esc(s.befehl)}</code> <span class="runstate ${st}">${esc(txt)}</span>${tok}${waiting}`
+    : `<span class="empty">Dieser Lauf hat noch keine start.json, vermutlich ein altes Format. Setze mit „0 Alles zurücksetzen“ neu auf.</span>`;
+  $('t1').classList.toggle('on', teil === 1); $('t2').classList.toggle('on', teil === 2);
+  $('follow').textContent = follow ? 'Live folgen: an' : 'Live folgen';
+  $('follow').classList.toggle('on', follow);
+  $('v1').hidden = teil !== 1; $('v2').hidden = teil !== 2;
+}
+
+// ---------------------------------------------------------------- Teil 1: Schritte
+function renderSteps() {
+  const selP = selK ? phaseOf(selK) : null;
+  $('steps').innerHTML = G.phasen.map((p, i) => {
+    const s = phaseState(p.id);
+    const txt = p.id === 'ergebnis' && stateOf('freigabe') === 'run' ? 'wartet auf dich' : LABEL[s];
+    return `<button class="step ${p.id === selP ? 'sel' : ''}" data-p="${p.id}" data-s="${s}"><span class="n">Schritt ${i + 1}</span><span class="t">${esc(p.titel)}</span><span class="s">${txt}</span></button>`;
+  }).join('');
+}
+
+// ---------------------------------------------------------------- Teil 2: Graph
+const C = { colw: 156, nw: 118, nh: 62, rowh: 104, x0: 14, y0: 70 };
+function P(k) { const [c, r] = G.knoten[k].pos; return { x: C.x0 + c * C.colw, y: C.y0 + r * C.rowh, c, r }; }
+function edgeGeom(a, b) {
+  const A = P(a), B = P(b); let p;
+  if (B.c > A.c) { const x1 = A.x + C.nw, y1 = A.y + C.nh / 2, x2 = B.x, y2 = B.y + C.nh / 2, dx = (x2 - x1) / 2; p = [[x1, y1], [x1 + dx, y1], [x2 - dx, y2], [x2, y2]]; }
+  else if (B.c === A.c) { const x = A.x + C.nw * .35, up = B.r < A.r, y1 = up ? A.y : A.y + C.nh, y2 = up ? B.y + C.nh : B.y; p = [[x, y1], [x, y1], [x, y2], [x, y2]]; }
+  else if (B.r !== A.r) { const up = B.r < A.r, x1 = A.x + C.nw / 2, y1 = up ? A.y : A.y + C.nh, x2 = B.x + C.nw * .75, y2 = up ? B.y + C.nh : B.y, m = (y1 + y2) / 2; p = [[x1, y1], [x1, m], [x2, m], [x2, y2]]; }
+  else { const x1 = A.x + C.nw / 2, x2 = B.x + C.nw / 2, y = A.y + C.nh, cy = y + 30 + 22 * (A.c - B.c); p = [[x1, y], [x1, cy], [x2, cy], [x2, y]]; }
+  const mid = [0, 1].map(i => (p[0][i] + 3 * p[1][i] + 3 * p[2][i] + p[3][i]) / 8);
+  return { d: `M${p[0]} C${p[1]} ${p[2]} ${p[3]}`, mid };
+}
+function renderGraph() {
+  const cols = Math.max(...Object.values(G.knoten).map(k => k.pos[0])) + 1;
+  const W = C.x0 * 2 + cols * C.colw - (C.colw - C.nw), H = C.y0 + 2 * C.rowh + C.nh + 70;
+  const svg = $('graph'); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let out = `<defs>${['idle', 'on', 'loop'].map(n => `<marker id="m-${n}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(${n === 'idle' ? '--line' : n === 'on' ? '--heavy' : '--warn'})"/></marker>`).join('')}</defs>`;
+  G.phasen.forEach((ph, i) => {
+    const cs = phaseNodes(ph.id).map(k => G.knoten[k].pos[0]);
+    const x1 = C.x0 + Math.min(...cs) * C.colw - 9, x2 = C.x0 + Math.max(...cs) * C.colw + C.nw + 9;
+    out += `<rect class="band ${i % 2 ? 'alt' : ''}" x="${x1}" y="0" width="${x2 - x1}" height="${H}"/><text class="bandlabel" x="${x1 + 8}" y="20">${esc(ph.titel)}</text>`;
+  });
+  for (const e of G.kanten) {
+    const g = edgeGeom(e.von, e.nach), n = kantenCount(e.von, e.nach);
+    const on = e.art ? n > 0 : (stateOf(e.von) === 'ok' && stateOf(e.nach) !== 'wait');
+    const loop = e.art === 'schleife';
+    const cls = `${on ? 'on' : ''} ${loop ? 'loop' : ''}`;
+    out += `<path class="edge ${cls}" d="${g.d}" marker-end="url(#m-${on ? (loop ? 'loop' : 'on') : 'idle'})"/>`;
+    if (e.text) out += `<text class="elabel ${cls}" x="${g.mid[0]}" y="${g.mid[1] - 4}" text-anchor="middle">${esc(e.text)}${loop && n ? ` ×${n}` : ''}</text>`;
+  }
+  for (const k of Object.keys(G.knoten)) {
+    const n = G.knoten[k], p = P(k), s = stateOf(k), r = rounds(k);
+    const sub = n.art === 'modell' ? short(modelLabel(k).split(' · ').pop().split('/').pop()) : n.art === 'skript' ? short(n.befehl || 'Skript') : 'Du';
+    out += `<g class="node s-${s} ${k === selK ? 'sel' : ''}" data-k="${k}" transform="translate(${p.x},${p.y})"><title>${esc(n.titel)}: ${esc(ART[n.art])}</title>
+      <rect width="${C.nw}" height="${C.nh}" rx="8"/>
+      <text class="t" x="10" y="20">${esc(n.titel)}</text>
+      <text class="m" x="10" y="36">${esc(sub)}</text>
+      <text class="st" x="10" y="53">${s === 'run' && k === 'freigabe' ? 'wartet auf dich' : LABEL[s]}</text>
+      ${warned(k) ? `<circle class="warnmark" cx="0" cy="0" r="8"/><text class="warnmark-t" x="0" y="4" text-anchor="middle">!</text>` : ''}
+      ${r > 1 ? `<rect class="rbadge" x="${C.nw - 34}" y="-8" width="30" height="16" rx="8"/><text class="rbadge-t" x="${C.nw - 19}" y="4" text-anchor="middle">R${r}</text>` : ''}
+    </g>`;
+  }
+  svg.innerHTML = out;
+}
+
+// ---------------------------------------------------------------- Teil 2: Zeitleiste
+function spans() {
+  const [st] = runState(), last = D.events.length ? tsec(D.events[D.events.length - 1]) : 0;
+  const now = st === 'run' ? Math.max(Date.now() / 1000, last) : last;
+  const out = Object.values(D.aufrufe).map(a => ({
+    k: a.knoten, id: a.id, runde: a.runde, start: a.start, status: a.status, skript: false,
+    end: a.dauer != null ? a.start + a.dauer : now,
+    text: a.status === 'run' ? `läuft seit ${Math.round(now - a.start)} s` : `${String(a.dauer).replace('.', ',')} s · ≈ ${kb(tokIn(a))} → ${kb(tokOut(a))} Tokens`,
+  }));
+  let open = null, n = 0;
+  for (const e of D.events.filter(e => e.knoten === 'gate' && LABEL[e.status])) {
+    if (e.status === 'run') { open = { k: 'gate', id: 'gate' + (++n), runde: n, start: tsec(e), status: 'run', skript: true, end: now, text: 'Tests laufen' }; out.push(open); }
+    else if (open) { open.end = Math.max(tsec(e), open.start + .3); open.status = e.status; open.text = e.status === 'ok' ? 'bestanden' : 'nicht bestanden'; open = null; }
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+function renderTimeline() {
+  const sp = spans(), tl = $('tl');
+  if (!sp.length) { tl.innerHTML = '<p class="empty" style="margin:4px 0">Noch kein Aufruf.</p>'; return; }
+  const t0 = Math.min(...sp.map(s => s.start)), t1 = Math.max(...sp.map(s => s.end), t0 + 1), span = t1 - t0;
+  const pct = t => ((t - t0) / span * 100).toFixed(2) + '%';
+  const step = [5, 10, 15, 30, 60, 120, 300, 600].find(x => span / x <= 8) || 1200;
+  const ticks = []; for (let t = 0; t <= span; t += step) ticks.push(t);
+  const fmt = t => t >= 60 ? `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')} min` : `${t} s`;
+  tl.innerHTML = sp.map(s => `<div class="tlrow ${s.k === selK ? 'sel' : ''}" data-k="${s.k}" data-a="${s.skript ? '' : s.id}">
+      <span class="tlname">${esc(G.knoten[s.k].titel)}${s.runde > 1 ? ` <small>R${s.runde}</small>` : ''}</span>
+      <div class="track"><div class="bar ${s.status} ${s.skript ? 'skript' : ''}" style="left:${pct(s.start)};width:calc(${pct(s.end)} - ${pct(s.start)})" title="${esc(s.text)}"></div>${
+        (s.end - t0) / span < .72 ? `<span class="barlbl" style="left:calc(${pct(s.end)} + 6px)">${esc(s.text)}</span>` : `<span class="barlbl left" style="left:calc(${pct(s.start)} - 6px)">${esc(s.text)}</span>`}</div></div>`).join('')
+    + `<div class="axis">${ticks.map(t => `<span style="left:${(t / span * 100).toFixed(2)}%">${fmt(t)}</span>`).join('')}</div>`;
+}
+
+// ---------------------------------------------------------------- Teil 2: Live-Wand
+function renderWall() {
+  const all = Object.values(D.aufrufe).sort((a, b) => a.id.localeCompare(b.id));
+  const running = all.filter(a => a.status === 'run');
+  const show = running.length ? running : all.slice(-3);
+  $('wallTitle').textContent = running.length ? `Live: ${running.length} ${running.length === 1 ? 'Agent arbeitet' : 'Agenten arbeiten gleichzeitig'}` : 'Live';
+  $('wallHint').textContent = running.length ? 'Jedes Fenster ist ein eigener Modell-Aufruf' : (all.length ? 'Gerade läuft kein Modell, hier die letzten Aufrufe' : 'Noch kein Modell-Aufruf');
+  const key = show.map(a => a.id + a.status).join() + selK;
+  const wall = $('wall');
+  if (wall.dataset.key !== key) {
+    wall.dataset.key = key;
+    wall.innerHTML = show.map(a => `<div class="card ${a.status === 'run' ? 'run' : 'done'} ${a.knoten === selK ? 'sel' : ''}" data-k="${a.knoten}" data-a="${a.id}">
+      <header><b>${esc(G.knoten[a.knoten].titel)}${a.runde > 1 ? ` · R${a.runde}` : ''}</b><span>${esc(a.anbieter)} · ${esc(a.modell)}</span></header><pre></pre></div>`).join('');
+  }
+  wall.querySelectorAll('.card').forEach(c => {
+    const pre = c.querySelector('pre'), t = (D.live[c.dataset.a] || '').slice(-2500);
+    if (pre.textContent !== t) { pre.textContent = t; pre.scrollTop = pre.scrollHeight; }
+  });
+}
+
+// ---------------------------------------------------------------- Detail-Panel
+function selection() {
+  const k = selK, node = G.knoten[k], calls = callsOf(k);
+  const call = (selA && D.aufrufe[selA]) || calls[calls.length - 1] || null;
+  return { k, node, calls, call };
+}
+async function record(id) {
+  if (!records[id]) { const r = await fetch(`/api/aufruf/${current}/${id}`); if (!r.ok) return null; records[id] = await r.json(); }
+  return records[id];
+}
+function harnessEvents() {
+  const scope = teil === 1 ? phaseNodes(phaseOf(selK)) : [selK];
+  return D.events.filter(e => scope.includes(e.knoten) && (e.status === 'harness' || (teil === 2 && e.status === 'kante')));
+}
+let panelKey = '';
+function renderPanel() {
+  if (!selK) { $('who').innerHTML = '<span class="empty">Noch nichts gestartet.</span>'; $('left').innerHTML = ''; $('out').innerHTML = ''; return; }
+  const { k, node, calls, call } = selection();
+  const s = call ? call.status : stateOf(k);
+  const t1 = node.art === 'modell' ? 'Agent' : node.art === 'skript' ? 'Harness' : 'Du';
+  const title = teil === 1 ? `${t1} <span class="sub">· ${esc(phaseTitle(node.phase))}</span>` : `${esc(node.titel)} <span class="sub">· ${esc(ART[node.art])}</span>`;
+  const model = call ? `<span class="chip">${esc(call.anbieter)} · ${esc(call.modell)}${call.simuliert ? ' · Demo' : ''}</span>` : '';
+  const runde = call && call.runde > 1 ? `<span class="chip">Runde ${call.runde}</span>` : '';
+  const tok = call ? `<span class="chip" title="geschätzt: 4 Zeichen ≈ 1 Token">≈ ${kb(tokIn(call))} Tokens rein · ${kb(tokOut(call))} raus</span>` : '';
+  $('who').innerHTML = `<h2>${title}</h2><span class="chip ${s}">${LABEL[s] || s}</span>${model}${runde}${tok}`;
+  $('rounds').innerHTML = teil === 2 && calls.length > 1 ? calls.map(a => `<button data-a="${a.id}" class="${a.id === (call || {}).id ? 'on' : ''}">Runde ${a.runde}</button>`).join('') : '';
+  [...$('tabs').querySelectorAll('button')].forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+
+  const hv = harnessEvents();
+  const key = [teil, k, call && call.id, call && call.status, tab, hv.length, s].join('|');
+  if (key !== panelKey) { panelKey = key; renderLeft(node, call, hv, key); }
+  renderOut(node, call);
+}
+async function renderLeft(node, call, hv, key) {
+  const left = $('left');
+  if (tab === 'harness') {
+    const intro = teil === 1
+      ? 'Normaler Code rund um das Modell: Antwort in Dateien übernehmen, prüfen, committen, Tests ausführen. Kein Sprachmodell entscheidet hier.'
+      : 'Was der Orchestrator für diesen Knoten getan hat, inklusive der Kanten, die er danach genommen hat.';
+    left.innerHTML = `<p class="note">${intro}</p>` + (hv.length ? `<ul class="hl">${hv.map(e => `<li><time>${esc(e.zeit)}</time><span class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text)}</span>${e.befehl ? `<code>${esc(e.befehl)}</code>` : ''}</li>`).join('')}</ul>` : '<p class="empty">Noch keine Harness-Schritte.</p>');
+    return;
+  }
+  if (node.art !== 'modell') {
+    const what = node.art === 'mensch' ? 'Hier bist du gefragt. Kein Modell, kein Prompt.' : `Dieser Schritt ist ein Skript. Kein Modell, kein Prompt. Er führt aus: <code>${esc(node.befehl)}</code>`;
+    left.innerHTML = `<p class="note">${what}</p>` + (tab === 'aufruf' && node.befehl ? `<pre class="raw box">$ ${esc(node.befehl)}</pre>` : '');
+    return;
+  }
+  if (!call) {
+    const pt = G.prompts[node.prompt] || '';
+    left.innerHTML = tab === 'prompt'
+      ? `<p class="note">Noch nicht aufgerufen. So sieht die Prompt-Datei gerade aus:</p><div class="filehead"><code>prompts/${esc(node.prompt)}</code></div><pre class="raw box">${esc(pt)}</pre>`
+      : tab === 'kontext'
+        ? `<p class="note">Noch nicht aufgerufen. Geplanter Kontext laut <code>orchestrator/graph.py</code>:</p><ul>${(node.kontext || []).map(c => `<li><code>${esc(c.replace('?', ''))}</code>${c.endsWith('?') ? ' (falls vorhanden)' : ''}</li>`).join('')}</ul>`
+        : '<p class="empty">Noch kein Aufruf.</p>';
+    return;
+  }
+  left.innerHTML = '<p class="empty">Lade …</p>';
+  const rec = await record(call.id);
+  if (key !== panelKey || !rec) return;
+  if (tab === 'prompt') {
+    left.innerHTML = `<p class="note">Die Rollenanweisung. Sie steht als Datei im Repo und geht unverändert an das Modell.</p>
+      <div class="filehead"><code>${esc(rec.prompt_datei)}</code><span class="hint">${kb(rec.prompt.length)} Zeichen</span></div><pre class="raw box">${esc(rec.prompt)}</pre>`;
+  } else if (tab === 'kontext') {
+    const parts = [{ name: rec.prompt_datei, quelle: rec.prompt_datei, text: rec.prompt, color: 'var(--c1)' }, ...rec.kontext.map((c, i) => ({ ...c, color: COLORS[i % COLORS.length] }))];
+    const total = parts.reduce((n, p) => n + p.text.length, 0);
+    left.innerHTML = `<p class="note">Eine einzige Nachricht: Prompt-Datei plus diese Dateien, jeweils mit <code>--- name ---</code> davor. Mehr weiß das Modell nicht.</p>
+      <div class="filehead"><span><b>${kb(total)} Zeichen</b> ≈ ${kb(Math.round(total / 4))} Tokens</span><span class="hint">${parts.length} Teile</span></div>
+      <div class="compose">${parts.map(p => `<span style="flex:${p.text.length};background:${p.color}" title="${esc(p.name)}"></span>`).join('')}</div>
+      <ul class="ctx">${parts.map(p => `<li><details><summary><span class="dot" style="background:${p.color}"></span><code>${esc(p.name)}</code><span class="sz">${kb(p.text.length)} Z. · ${esc(p.quelle)}</span></summary><pre>${esc(p.text)}</pre></details></li>`).join('')}</ul>`;
+  } else if (tab === 'aufruf') {
+    const a = rec.anfrage, parts = [rec.prompt_datei, ...rec.kontext.map(c => c.name)];
+    const body = `{\n  "model": "${a.body.model}",\n  "stream": true,\n  "messages": [{\n    "role": "user",\n    "content": "${parts.map(p => '‹' + p + '›').join(' + ')}"\n  }]\n}`;
+    const d = rec.dauer != null ? ` · ${String(rec.dauer).replace('.', ',')} s` : '';
+    left.innerHTML = (rec.simuliert ? `<p class="note warn">Demo: Diese Anfrage wurde nicht gesendet. Eine vorbereitete Antwort aus <code>orchestrator/demo/</code> kommt zurück. Alles danach läuft echt.</p>` : '') +
+      `<p class="note">Gestartet vom Orchestrator, der selbst so gestartet wurde:</p><pre class="raw box">$ ${esc(D.start.befehl || '')}</pre>
+      <p class="note" style="margin-top:14px">Der Modell-Aufruf als HTTP-Anfrage:</p>
+      <pre class="raw box">POST ${esc(a.url)}\nAuthorization: Bearer $${esc(a.key)}\nContent-Type: application/json\n\n${esc(body)}</pre>
+      <p class="note" style="margin-top:14px">Status: <b>${LABEL[rec.status] || rec.status}</b>${d}${rec.antwort_zeichen ? ` · Antwort ${kb(rec.antwort_zeichen)} Zeichen` : ''}${rec.fehler ? ` · ${esc(rec.fehler)}` : ''}</p>`;
+  }
+}
+let outKey = '';
+function renderOut(node, call) {
+  const box = $('out');
+  let html, lbl, raw = false, text;
+  if (call) {
+    text = D.live[call.id] || '';
+    raw = !node.ausgabe[0].endsWith('.md');
+    lbl = `→ ${node.ausgabe.map(f => f.replace('{runde}', call.runde)).join(', ')}`;
+    if (!text) html = '<p class="empty">Wartet auf die ersten Zeichen …</p>';
+  } else {
+    const ev = D.events.filter(e => e.knoten === selK && e.datei).pop();
+    text = ev ? D.dateien[ev.datei] : '';
+    lbl = ev ? ev.datei : '';
+    if (!text) html = node.art === 'mensch' && stateOf(selK) === 'run' && node.befehl
+      ? `<p>Der Lauf wartet auf dich. Prüfe das Ergebnis über „Ergebnis spielen“ und übernimm es dann mit</p><pre class="raw box">$ ${esc(node.befehl)}</pre>`
+      : `<p class="empty">${stateOf(selK) === 'run' ? 'Läuft …' : 'Noch keine Ausgabe.'}</p>`;
+  }
+  $('outlbl').textContent = lbl;
+  const key = (call ? call.id : selK) + '|' + (text || '').length + '|' + raw;
+  if (key === outKey) return;
+  const fresh = !outKey.startsWith((call ? call.id : selK) + '|');
+  outKey = key;
+  const stick = fresh || box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  box.innerHTML = html || (raw ? `<pre class="raw">${esc(text)}</pre>` : `<div class="md">${md(text)}</div>`);
+  if (stick && (call ? call.status === 'run' : false)) box.scrollTop = box.scrollHeight;
+  else if (fresh) box.scrollTop = 0;
+}
+
+// ---------------------------------------------------------------- Protokoll
+let logKey = '';
+function renderLog() {
+  const ev = D.events.filter(e => teil === 2 || e.status !== 'kante');
+  const key = teil + '|' + ev.length;
+  if (key === logKey) return; logKey = key;
+  $('loghint').textContent = teil === 1 ? 'Agent = Sprachmodell · Harness = Code drumherum' : 'Ein Eintrag je Knoten, Kante und Harness-Schritt';
+  $('log').innerHTML = ev.map(e => {
+    const n = G.knoten[e.knoten];
+    let who, cls = e.status === 'fail' ? 'fail' : e.warnung ? 'warn' : e.status;
+    if (teil === 1) who = !n ? 'Harness' : e.status === 'harness' || n.art === 'skript' ? 'Harness' : n.art === 'mensch' ? 'Du' : 'Agent';
+    else who = n ? n.titel : 'Orchestrator';
+    const detail = teil === 1 ? (n ? phaseTitle(n.phase) : '') : (e.befehl || (e.anbieter ? `${e.anbieter} · ${e.modell}` : ''));
+    return `<li><time>${esc(e.zeit)}</time><b>${esc(who)}</b><span class="${cls}">${esc(e.text)}</span><span class="detail">${esc(detail)}</span></li>`;
+  }).join('');
+  $('log').scrollTop = $('log').scrollHeight;
+}
+
+// ---------------------------------------------------------------- Takt
+function render() {
+  if (follow) autoSelect();
+  renderHead();
+  if (teil === 1) renderSteps(); else { renderGraph(); renderTimeline(); renderWall(); }
+  renderPanel();
+  renderLog();
+}
+async function tick() {
+  try {
+    if (!G) G = await (await fetch('/api/graph')).json();
+    const runs = await (await fetch('/api/runs')).json(), sel = $('run');
+    if (sel.options.length !== runs.length) {
+      sel.innerHTML = runs.map(r => `<option>${esc(r)}</option>`).join('');
+      if (!current || follow) switchRun(runs[0]);
+      sel.value = current;
+    }
+    if (!current) { $('startline').innerHTML = '<span class="empty">Noch kein Lauf. Starte in VS Code den Task „2 Demo ohne API-Keys“.</span>'; return; }
+    D = await (await fetch('/api/run/' + current)).json();
+    D.start = D.start || {};
+    render();
+  } catch (e) {
+    console.error(e);
+    $('startline').innerHTML = '<span class="empty">Keine Verbindung. Läuft der Task „1 Dashboard starten“?</span>';
+  }
+}
+function switchRun(id) { current = id; selK = null; selA = null; panelKey = outKey = logKey = ''; $('wall').dataset.key = ''; }
+function setTeil(n) { teil = n; history.replaceState(null, '', n === 2 ? '#teil2' : '#teil1'); panelKey = logKey = ''; if (D) render(); }
+function pick(k, a) { follow = false; selK = k; selA = a || null; if (D) render(); }
+
+$('t1').onclick = () => setTeil(1);
+$('t2').onclick = () => setTeil(2);
+$('follow').onclick = () => { follow = !follow; if (follow) selA = null; if (D) render(); };
+$('run').onchange = e => { switchRun(e.target.value); follow = false; tick(); };
+$('tabs').onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; if (D) render(); } };
+$('rounds').onclick = e => { if (e.target.dataset.a) pick(selK, e.target.dataset.a); };
+$('steps').onclick = e => {
+  const b = e.target.closest('.step'); if (!b || !D) return;
+  const ks = phaseNodes(b.dataset.p);
+  const hit = D.events.filter(x => ks.includes(x.knoten) && LABEL[x.status]).pop();
+  pick(hit ? hit.knoten : ks[0]);
+};
+$('graph').onclick = e => { const g = e.target.closest('.node'); if (g) pick(g.dataset.k); };
+$('wall').onclick = e => { const c = e.target.closest('.card'); if (c) pick(c.dataset.k, c.dataset.a); };
+$('tl').onclick = e => { const r = e.target.closest('.tlrow'); if (r) pick(r.dataset.k, r.dataset.a || null); };
+document.addEventListener('keydown', e => {
+  if (e.target.closest('select, input, textarea')) return;
+  if (e.key === '1') setTeil(1); if (e.key === '2') setTeil(2);
+  if (e.key === 'f' || e.key === 'F') $('follow').click();
+});
+tick(); setInterval(tick, 700);
+</script>
+</body>
+</html>
