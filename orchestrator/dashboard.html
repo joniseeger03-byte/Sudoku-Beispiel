@@ -4,14 +4,19 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Agentenlauf</title>
 <style>
-:root { --bg:#e9eff5; --panel:#fbfcfe; --ink:#14233b; --muted:#54647b; --line:#c4cfdc; --heavy:#14233b; --accent:#2343c9; --soft:#dfe6fb;
-  --ok:#0d7a59; --oksoft:#dcf1e8; --bad:#bd2445; --badsoft:#fbe3e8; --warn:#9a5b00; --warnsoft:#fbecd2; --code:#eef2f7;
-  --c1:#2343c9; --c2:#0d7a59; --c3:#9a5b00; --c4:#7a3fb0; --c5:#bd2445; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0f1623; --panel:#172132; --ink:#e7edf6; --muted:#9eaec4; --line:#33445c; --heavy:#aebdd2; --accent:#93a9ff; --soft:#24335f;
-  --ok:#5ad2aa; --oksoft:#173d33; --bad:#ff8fa5; --badsoft:#4b1d2a; --warn:#f2bb63; --warnsoft:#463414; --code:#111a28;
-  --c1:#93a9ff; --c2:#5ad2aa; --c3:#f2bb63; --c4:#c9a0ff; --c5:#ff8fa5; color-scheme: dark; } }
+:root { /* EXCO: Grün #3CB64C, Grau #797272, Hellgrau #E1DFDD */
+  --bg:#F4F3F2; --panel:#FFFFFF; --ink:#2B2727; --muted:#635C5C; --line:#E1DFDD; --heavy:#797272; --accent:#23843A; --soft:#E3F4E5;
+  --ok:#1F6B2B; --oksoft:#DDEEDF; --bad:#B3261E; --badsoft:#F9E1DE; --warn:#8A5300; --warnsoft:#F6ECD5; --code:#F4F3F2;
+  --c1:#797272; --c2:#3CB64C; --c3:#1F6B2B; --c4:#B5AFAF; --c5:#C98A1B;
+  --brand:#3CB64C; --kopf:#797272; --kopf-text:#FFFFFF; --on-accent:#FFFFFF; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1E1B1B; --panel:#2A2626; --ink:#EDEBEA; --muted:#B3ACAC; --line:#3D3838; --heavy:#B5AFAF; --accent:#5CCB6B; --soft:#1F3A23;
+  --ok:#86D18F; --oksoft:#203A25; --bad:#FF8F85; --badsoft:#4A2421; --warn:#F2BB63; --warnsoft:#463414; --code:#241F1F;
+  --c1:#B5AFAF; --c2:#4CC45C; --c3:#2E8B3C; --c4:#8E8787; --c5:#F2BB63;
+  --brand:#4CC45C; --kopf:#4A4444; --kopf-text:#FFFFFF; --on-accent:#10240F; color-scheme: dark; } }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Segoe UI", sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", "Segoe UI Web (West European)", system-ui, sans-serif; }
+/* Kopfband wie im EXCO-SharePoint: graue Leiste mit grüner Linie */
+body::before { content: "TechTalk  ·  KI-Agenten"; display: block; height: 44px; padding: 0 24px; line-height: 44px; background: var(--kopf); color: var(--kopf-text); font-weight: 600; font-size: .95rem; letter-spacing: .02em; border-bottom: 4px solid var(--brand); }
 button, select { font: inherit; color: inherit; }
 code, pre, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
 .wrap { max-width: 1560px; margin: auto; padding: 20px 16px 16px; display: grid; gap: 18px; }
@@ -23,11 +28,11 @@ h1 { margin: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px
 .badge.live { background: var(--soft); color: var(--accent); }
 .badge.demo { background: var(--warnsoft); color: var(--warn); }
 .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.seg { display: inline-flex; border: 1.5px solid var(--heavy); border-radius: 6px; overflow: hidden; }
+.seg { display: inline-flex; border: 1.5px solid var(--heavy); border-radius: 4px; overflow: hidden; }
 .seg button { border: 0; background: var(--panel); padding: 6px 12px; cursor: pointer; }
-.seg button.on { background: var(--ink); color: var(--panel); }
-select, a.btn, button.btn { background: var(--panel); border: 1.5px solid var(--heavy); border-radius: 6px; padding: 6px 10px; text-decoration: none; cursor: pointer; }
-a.btn.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+.seg button.on { background: var(--accent); color: var(--on-accent); }
+select, a.btn, button.btn { background: var(--panel); border: 1.5px solid var(--heavy); border-radius: 4px; padding: 6px 10px; text-decoration: none; cursor: pointer; }
+a.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
 .startline { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .9rem; color: var(--muted); }
 .cmd { background: var(--ink); color: var(--panel); padding: 4px 10px; border-radius: 4px; font-size: .85rem; }
 .cmd::before { content: "$ "; opacity: .6; }
@@ -35,7 +40,7 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .runstate.run { color: var(--accent); } .runstate.ok { color: var(--ok); } .runstate.fail { color: var(--bad); } .runstate.wait { color: var(--warn); }
 
 /* Teil 2: Graph */
-.graphbox { background: var(--panel); border: 2px solid var(--heavy); border-radius: 6px; overflow-x: auto; }
+.graphbox { background: var(--panel); border: 2px solid var(--heavy); border-radius: 4px; overflow-x: auto; }
 #graph { display: block; min-width: 900px; width: 100%; height: auto; }
 #graph .band { fill: var(--bg); } #graph .band.alt { fill: var(--panel); }
 #graph .bandlabel { fill: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
@@ -65,7 +70,7 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .wallhead h2, .panelhead h2, .loghead h2 { margin: 0; font-size: 1rem; }
 .hint { font-size: .82rem; color: var(--muted); }
 .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-.card { background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; min-width: 0; cursor: pointer; display: flex; flex-direction: column; }
+.card { background: var(--panel); border: 1.5px solid var(--line); border-radius: 4px; min-width: 0; cursor: pointer; display: flex; flex-direction: column; }
 .card.run { border-color: var(--accent); }
 .card.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
 .card header { padding: 6px 10px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; }
@@ -74,7 +79,7 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .card.done pre { opacity: .7; }
 
 /* Detail-Panel */
-.panel { background: var(--panel); border: 2px solid var(--heavy); border-radius: 6px; min-width: 0; }
+.panel { background: var(--panel); border: 2px solid var(--heavy); border-radius: 4px; min-width: 0; }
 .panelhead { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1.5px solid var(--heavy); }
 .panelhead .who { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
 .panelhead .sub { font-size: .82rem; color: var(--muted); }
@@ -131,7 +136,7 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .log .detail { color: var(--muted); font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) { .log li { grid-template-columns: 4.6em minmax(0,1fr); } .log .detail, .log li > b { display: none; } }
 /* Teil 2: Zeitleiste */
-.tl { background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; padding: 8px 12px 10px; }
+.tl { background: var(--panel); border: 1.5px solid var(--line); border-radius: 4px; padding: 8px 12px 10px; }
 .tlrow { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); gap: 10px; align-items: center; min-height: 26px; cursor: pointer; }
 .tlrow:hover .tlname { color: var(--accent); }
 .tlrow.sel .tlname { font-weight: 700; }
@@ -150,12 +155,12 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 #graph .warnmark { fill: var(--warn); } #graph .warnmark-t { fill: var(--panel); font-size: 11px; font-weight: 800; }
 /* Vorführung: Bausteine, Erklärungen, Aufklappbares */
 .zustand { font-size: .9rem; }
-.laufbox { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.laufbox { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--panel); border: 1.5px solid var(--line); border-radius: 4px; padding: 10px 12px; }
 .flow { display: grid; grid-template-columns: minmax(0,2fr) auto minmax(0,2fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,2fr); gap: 8px; align-items: stretch; padding: 14px; border-bottom: 1.5px solid var(--heavy); }
 .flow .op { align-self: center; font-size: 1.6rem; color: var(--muted); padding: 0 2px; }
-.flow button { background: var(--bg); border: 2px solid var(--line); border-radius: 8px; padding: 18px 12px; text-align: center; cursor: pointer; min-width: 0; }
+.flow button { background: var(--bg); border: 2px solid var(--line); border-radius: 4px; padding: 18px 12px; text-align: center; cursor: pointer; min-width: 0; }
 .flow button:hover { border-color: var(--heavy); }
-.flow button.on { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.flow button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .flow b { display: block; font-size: 1.7rem; line-height: 1.2; }
 .flow button.klein b { font-size: 1.1rem; }
 .flow button.leer { opacity: .5; }
@@ -167,8 +172,8 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .erkl ul { margin: 8px 0 0; padding-left: 20px; }
 .erkl li { margin: 4px 0; }
 .pfad { margin: 0; padding: 8px 16px 0; font-size: .82rem; color: var(--muted); }
-#panel { display: flex; flex-direction: column; height: calc(100vh - 100px); min-height: 480px; }
-body.teil2 #panel { height: calc(100vh - 190px); }
+#panel { display: flex; flex-direction: column; height: calc(100vh - 148px); min-height: 480px; }
+body.teil2 #panel { height: calc(100vh - 238px); }
 #panel .pane { flex: 1; height: auto; min-height: 0; }
 .haken { list-style: none; margin: 0 0 14px; padding: 0; font-size: 1.1rem; }
 .haken li { padding: 6px 0; }
@@ -184,7 +189,7 @@ body.teil2 #panel { height: calc(100vh - 190px); }
 .fakten dt { color: var(--muted); } .fakten dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
 details.tech > summary, details.mehr > summary { cursor: pointer; color: var(--accent); }
 details.tech[open] > summary { margin-bottom: 10px; }
-details.mehr { background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+details.mehr { background: var(--panel); border: 1.5px solid var(--line); border-radius: 4px; padding: 10px 14px; }
 details.mehr[open] > summary { margin-bottom: 10px; }
 .konzept { border-bottom: 0; padding-left: 0; }
 .unter { margin-top: 10px; }
