@@ -241,7 +241,9 @@ function md(src) {
   return o.join('');
 }
 const LABEL = { wait: 'wartet', run: 'läuft', ok: 'fertig', fail: 'Fehler' };
-const ART = { modell: 'Sprachmodell', skript: 'Skript, kein Modell', mensch: 'Du' };
+const ART = { modell: 'Sprachmodell', agent: 'Agent mit Werkzeugen', skript: 'Skript, kein Modell', mensch: 'Du' };
+const KI = a => a === 'modell' || a === 'agent';
+const SKRIPTE = ['gate', 'abnahme'];
 const COLORS = ['var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
 const kb = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + ' k' : String(n);
 
@@ -263,7 +265,7 @@ function phaseState(p) {
   let s = 'wait'; for (const e of D.events) if (ks.includes(e.knoten) && LABEL[e.status]) s = e.status;
   return s;
 }
-function rounds(k) { return k === 'gate' ? D.events.filter(e => e.knoten === 'gate' && e.status === 'run').length : callsOf(k).length; }
+function rounds(k) { return SKRIPTE.includes(k) ? D.events.filter(e => e.knoten === k && e.status === 'run').length : callsOf(k).length; }
 function kantenCount(a, b) { return D.events.filter(e => e.status === 'kante' && e.von === a && e.nach === b).length; }
 function runState() {
   const last = D.events[D.events.length - 1];
@@ -327,7 +329,7 @@ function renderSteps() {
 }
 
 // ---------------------------------------------------------------- Teil 2: Graph
-const C = { colw: 156, nw: 118, nh: 62, rowh: 104, x0: 14, y0: 70 };
+const C = { colw: 146, nw: 114, nh: 62, rowh: 104, x0: 14, y0: 70 };
 function P(k) { const [c, r] = G.knoten[k].pos; return { x: C.x0 + c * C.colw, y: C.y0 + r * C.rowh, c, r }; }
 function edgeGeom(a, b) {
   const A = P(a), B = P(b); let p;
@@ -358,7 +360,7 @@ function renderGraph() {
   }
   for (const k of Object.keys(G.knoten)) {
     const n = G.knoten[k], p = P(k), s = stateOf(k), r = rounds(k);
-    const sub = n.art === 'modell' ? short(modelLabel(k).split(' · ').pop().split('/').pop()) : n.art === 'skript' ? short(n.befehl || 'Skript') : 'Du';
+    const sub = KI(n.art) ? short(modelLabel(k).split(' · ').pop().split('/').pop() + (n.art === 'agent' ? ' + Werkzeuge' : '')) : n.art === 'skript' ? short(n.befehl || 'Skript') : 'Du';
     out += `<g class="node s-${s} ${k === selK ? 'sel' : ''}" data-k="${k}" transform="translate(${p.x},${p.y})"><title>${esc(n.titel)}: ${esc(ART[n.art])}</title>
       <rect width="${C.nw}" height="${C.nh}" rx="8"/>
       <text class="t" x="10" y="20">${esc(n.titel)}</text>
@@ -380,10 +382,12 @@ function spans() {
     end: a.dauer != null ? a.start + a.dauer : now,
     text: a.status === 'run' ? `läuft seit ${Math.round(now - a.start)} s` : `${String(a.dauer).replace('.', ',')} s · ≈ ${kb(tokIn(a))} → ${kb(tokOut(a))} Tokens`,
   }));
-  let open = null, n = 0;
-  for (const e of D.events.filter(e => e.knoten === 'gate' && LABEL[e.status])) {
-    if (e.status === 'run') { open = { k: 'gate', id: 'gate' + (++n), runde: n, start: tsec(e), status: 'run', skript: true, end: now, text: 'Tests laufen' }; out.push(open); }
-    else if (open) { open.end = Math.max(tsec(e), open.start + .3); open.status = e.status; open.text = e.status === 'ok' ? 'bestanden' : 'nicht bestanden'; open = null; }
+  for (const k of SKRIPTE) {
+    let open = null, n = 0;
+    for (const e of D.events.filter(e => e.knoten === k && LABEL[e.status])) {
+      if (e.status === 'run') { open = { k, id: k + (++n), runde: n, start: tsec(e), status: 'run', skript: true, end: now, text: 'Tests laufen' }; out.push(open); }
+      else if (open) { open.end = Math.max(tsec(e), open.start + .3); open.status = e.status; open.text = e.status === 'ok' ? 'bestanden' : 'nicht bestanden'; open = null; }
+    }
   }
   return out.sort((a, b) => a.start - b.start);
 }
@@ -441,7 +445,7 @@ function renderPanel() {
   if (!selK) { $('who').innerHTML = '<span class="empty">Noch nichts gestartet.</span>'; $('left').innerHTML = ''; $('out').innerHTML = ''; return; }
   const { k, node, calls, call } = selection();
   const s = call ? call.status : stateOf(k);
-  const t1 = node.art === 'modell' ? 'Agent' : node.art === 'skript' ? 'Harness' : 'Du';
+  const t1 = KI(node.art) ? 'Agent' : node.art === 'skript' ? 'Harness' : 'Du';
   const title = teil === 1 ? `${t1} <span class="sub">· ${esc(phaseTitle(node.phase))}</span>` : `${esc(node.titel)} <span class="sub">· ${esc(ART[node.art])}</span>`;
   const model = call ? `<span class="chip">${esc(call.anbieter)} · ${esc(call.modell)}${call.simuliert ? ' · Demo' : ''}</span>` : '';
   const runde = call && call.runde > 1 ? `<span class="chip">Runde ${call.runde}</span>` : '';
@@ -464,7 +468,7 @@ async function renderLeft(node, call, hv, key) {
     left.innerHTML = `<p class="note">${intro}</p>` + (hv.length ? `<ul class="hl">${hv.map(e => `<li><time>${esc(e.zeit)}</time><span class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text)}</span>${e.befehl ? `<code>${esc(e.befehl)}</code>` : ''}</li>`).join('')}</ul>` : '<p class="empty">Noch keine Harness-Schritte.</p>');
     return;
   }
-  if (node.art !== 'modell') {
+  if (!KI(node.art)) {
     const what = node.art === 'mensch' ? 'Hier bist du gefragt. Kein Modell, kein Prompt.' : `Dieser Schritt ist ein Skript. Kein Modell, kein Prompt. Er führt aus: <code>${esc(node.befehl)}</code>`;
     left.innerHTML = `<p class="note">${what}</p>` + (tab === 'aufruf' && node.befehl ? `<pre class="raw box">$ ${esc(node.befehl)}</pre>` : '');
     return;
@@ -493,6 +497,16 @@ async function renderLeft(node, call, hv, key) {
       <ul class="ctx">${parts.map(p => `<li><details><summary><span class="dot" style="background:${p.color}"></span><code>${esc(p.name)}</code><span class="sz">${kb(p.text.length)} Z. · ${esc(p.quelle)}</span></summary><pre>${esc(p.text)}</pre></details></li>`).join('')}</ul>`;
   } else if (tab === 'aufruf') {
     const a = rec.anfrage, parts = [rec.prompt_datei, ...rec.kontext.map(c => c.name)];
+    const d0 = rec.dauer != null ? ` · ${String(rec.dauer).replace('.', ',')} s` : '';
+    const kosten = rec.kosten_usd != null ? ` · ${rec.kosten_usd.toFixed(3).replace('.', ',')} USD` : '';
+    if (a.befehl) {
+      left.innerHTML = (rec.simuliert ? `<p class="note warn">Demo: Claude Code wurde nicht gestartet. Eine vorbereitete Antwort aus <code>orchestrator/demo/</code> kommt zurück.</p>` : '') +
+        `<p class="note">Kein HTTP-Aufruf, sondern ein Prozess: Der Orchestrator startet Claude Code. Die Nachricht geht über stdin.</p>
+        <pre class="raw box">$ ${esc(a.befehl.join(' '))} &lt; ‹${esc(parts.join(' + '))}›</pre>` +
+        (a.werkzeuge.length ? `<p class="note" style="margin-top:14px">Erlaubte Werkzeuge. Alles andere wird abgelehnt:</p><pre class="raw box">${esc(a.werkzeuge.join('\n'))}</pre>` : `<p class="note" style="margin-top:14px">Keine Werkzeuge freigegeben: Hier urteilt Claude nur über den mitgegebenen Kontext.</p>`) +
+        `<p class="note" style="margin-top:14px">Status: <b>${LABEL[rec.status] || rec.status}</b>${d0}${kosten}${rec.fehler ? ` · ${esc(rec.fehler)}` : ''}</p>`;
+      return;
+    }
     const body = `{\n  "model": "${a.body.model}",\n  "stream": true,\n  "messages": [{\n    "role": "user",\n    "content": "${parts.map(p => '‹' + p + '›').join(' + ')}"\n  }]\n}`;
     const d = rec.dauer != null ? ` · ${String(rec.dauer).replace('.', ',')} s` : '';
     left.innerHTML = (rec.simuliert ? `<p class="note warn">Demo: Diese Anfrage wurde nicht gesendet. Eine vorbereitete Antwort aus <code>orchestrator/demo/</code> kommt zurück. Alles danach läuft echt.</p>` : '') +

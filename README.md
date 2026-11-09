@@ -7,7 +7,8 @@ Mehrere Sprachmodelle bauen gemeinsam ein Browser-Sudoku. Ein Python-Skript (der
 - [VS Code](https://code.visualstudio.com/)
 - [Python 3.10 oder neuer](https://www.python.org/downloads/)
 - [Git](https://git-scm.com/)
-- Für echte Läufe zusätzlich API-Keys für die Anbieter in `config.json` (vorkonfiguriert: Groq und OpenRouter)
+- Für echte Läufe zusätzlich API-Keys für die Anbieter in `config.json` (vorkonfiguriert: Groq und OpenRouter) und ein angemeldetes [Claude Code](https://code.claude.com/docs/en/setup)
+- Für die Abnahme der Oberfläche Edge oder Chrome. Ohne Browser bleibt die Oberfläche ungeprüft, das Dashboard warnt dann.
 
 Node.js wird nicht benötigt.
 
@@ -21,6 +22,8 @@ Der Demo-Lauf dauert etwa 45 Sekunden. Statt der Modelle antworten vorbereitete 
 
 - Die Prüfung lehnt die erste Recherche ab, die Recherche läuft ein zweites Mal.
 - Die erste Engine ist absichtlich fehlerhaft. Das Test-Gate schlägt fehl, der Testcheck gibt der Engine die Schuld, die Korrektur repariert sie, und Runde 2 besteht.
+
+Danach findet der Integrations-Agent einen Fehler im Zusammenspiel: Die Oberfläche erwartet leere Felder als `undefined`, die Engine liefert `0`, also lässt sich keine Ziffer setzen. Die Abnahme bedient das Ergebnis anschließend im Headless-Browser.
 
 4. Klicke im Dashboard auf **Ergebnis spielen**.
 5. **4 Lauf freigeben**. Erst dann landet das Ergebnis in `main` unter `arbeitsbereich/projekt`.
@@ -56,7 +59,17 @@ Das Panel hat in beiden Ansichten dieselben Reiter:
 4. **2b Verbindung testen**. Jeder Anbieter muss `OK` melden. Das kostet nur wenige Tokens.
 5. **3 Echten Lauf starten**. Ctrl+C im Terminal bricht ab.
 
-Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall ein.
+Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall ein. Nur `integration` braucht Claude Code, weil dieser Agent selbst Dateien ändert.
+
+### Wer macht was
+
+| Rollen | Ausführung | Warum |
+|---|---|---|
+| Recherche, Prüfung, Spezifikation, Engine, Oberfläche, Tests | Sprachmodell über HTTP (Groq, OpenRouter) | Ein Aufruf, eine Antwort. Die Harness schreibt das Ergebnis in Dateien. |
+| Testcheck | Claude Code ohne Werkzeuge | Urteilt nur über den mitgegebenen Kontext. |
+| Korrektur, Integration | Claude Code mit Werkzeugen | Arbeitet selbst im Worktree: liest, ändert und führt Python aus. Erlaubt sind nur die Werkzeuge in `WERKZEUGE` in `orchestrator/agents.py`. |
+
+Modelle ohne Werkzeuge korrigieren blind. In echten Läufen pendelten sie zwischen Fehlern, weil sie ihren Code nie ausführen konnten.
 
 ## Aufbau
 
@@ -67,7 +80,8 @@ Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall e
 | `prompts/` | Eine Rollenanweisung je Agent |
 | `orchestrator/graph.py` | Der Ablauf als Daten: Knoten mit Prompt, Kontext und Ausgabe, Kanten und Schleifen |
 | `orchestrator/run.py` | Führt den Graphen aus: Modell-Aufrufe, Harness, Schleifen |
-| `orchestrator/agents.py` | HTTP-Aufruf an OpenAI-kompatible Schnittstellen |
+| `orchestrator/agents.py` | HTTP-Aufruf an OpenAI-kompatible Schnittstellen und Start von Claude Code |
+| `orchestrator/ui_check.py` | Bedient die Oberfläche im Headless-Browser: Ziffern setzen, löschen, Konflikte |
 | `orchestrator/dashboard.py` / `.html` | Zeigt die Läufe an, liest nur `runs/` |
 | `runs/<lauf>/` | `start.json`, `events.jsonl`, `aufrufe/` (Prompt und Kontext je Aufruf), `live/`, Markdown-Ergebnisse |
 | `arbeitsbereich/` | Zielprojekt und Git-Worktrees je Agent |
@@ -80,7 +94,7 @@ Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall e
 - **Ausweichen:** Bei einem kurzen Ratenlimit (429) wartet der Orchestrator einmal. Bei 403, 429 oder 5xx versucht er danach den nächsten Anbieter. Das steht als ⚠ im Dashboard. `--check` weicht nie aus.
 - **Harness-Regeln:** Unbrauchbarer Code (Syntaxfehler, fehlende Datei, abgeschnittene Antwort) führt zu genau einer Nachfrage mit dem Fehler als „Hinweis der Harness“. Der Testcheck darf den Test nur einmal pro Lauf ändern, und nur mit einer tatsächlich geänderten, gültigen Datei. Das Test-Gate bricht nach `test_zeitlimit` Sekunden ab (`config.json`, Standard 90).
 - **Modell-Parameter:** Unter `anbieter.<name>.parameter` in `config.json` gehen zusätzliche Felder in jede Anfrage, z. B. `reasoning_effort` und `max_completion_tokens` für Reasoning-Modelle.
-- **Rechte:** Test-Gate und Dashboard führen den erzeugten Python-Code aus. Das ist kein Sandbox-Schutz, nutze es nur für Aufträge, denen du vertraust.
+- **Rechte:** Test-Gate, Abnahme und Dashboard führen den erzeugten Python-Code aus, Claude Code darf in den Worktrees Dateien ändern und Python ausführen. Das ist kein Sandbox-Schutz, nutze es nur für Aufträge, denen du vertraust.
 - **Kein Sicherheitsnetz:** Scheitern die Modelle, scheitert der Lauf sichtbar. Es gibt keinen versteckten Ersatzcode.
 - **Recherche:** Die Modelle antworten ohne Websuche aus ihrem Wissen. Quellen können falsch sein.
 - **Port belegt?** Ändere `PORT` in `orchestrator/dashboard.py`.

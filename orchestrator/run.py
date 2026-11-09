@@ -34,7 +34,7 @@ GIT = ["git", "-c", "user.name=Agentenlauf", "-c", "user.email=agent@localhost"]
 DEMO_CODE = {
     "engine": ["engine_fehlerhaft.py"],
     "korrektur": ["engine.py"],
-    "ui": ["index.html", "board.js", "style.css"],
+    "ui": ["index.html", "board_fehlerhaft.js", "style.css"],
     "tests": ["test_spiel.py"],
 }
 SPRACHE = {".py": "python", ".html": "html", ".js": "javascript", ".css": "css"}
@@ -135,7 +135,7 @@ class Lauf:
         return out
 
     # --- Ein Modell-Aufruf ------------------------------------------
-    def frage(self, cfg, knoten, runde=1, suche=(), nachtrag=None):
+    def frage(self, cfg, knoten, runde=1, suche=(), nachtrag=None, cwd=None):
         """Baut die Nachricht aus prompts/<prompt> + Kontext, ruft das Modell und protokolliert alles.
         `nachtrag`: Hinweis der Harness, z. B. der Syntaxfehler der vorigen Antwort."""
         k = KNOTEN[knoten]
@@ -155,7 +155,7 @@ class Lauf:
             "id": aid, "knoten": knoten, "runde": runde, "status": "run", "start": time.time(),
             "anbieter": anbieter, "modell": modell, "simuliert": self.demo,
             "prompt_datei": prompt_datei, "prompt": prompt_text, "kontext": kontext,
-            "anfrage": agents.anfrage(cfg, anbieter, nachricht),
+            "anfrage": agents.anfrage(cfg, anbieter, nachricht, werkzeuge=k["art"] == "agent"),
         }
         self._speichere(rec)
         self.event(knoten, "run", f"Modell-Aufruf, Runde {runde}" if runde > 1 else "Modell-Aufruf",
@@ -164,6 +164,8 @@ class Lauf:
         try:
             if self.demo:
                 text = demo_antwort(knoten, runde, out)
+            elif agents.ist_claude(cfg, anbieter):
+                text, rec["kosten_usd"] = agents.claude_call(cfg, anbieter, nachricht, out, cwd or self.dir, k["art"] == "agent")
             else:
                 def wechsel(von, nach, grund):
                     self.harness(knoten, f"Anbieter gewechselt: {von} → {nach} ({grund.strip()[:120]})", warnung=True)
@@ -287,6 +289,23 @@ def codeknoten(lauf, cfg, knoten, pfad, runde=1, suche=(), pflicht=None):
     lauf.event(knoten, "ok", "Dateien übernommen", aufruf=aid)
 
 
+def korrektur(lauf, cfg, engine, integ, runde):
+    """Korrektur-Agent: arbeitet im Engine-Worktree und führt die Tests selbst aus.
+    Die Testdatei ist nur eine Kopie und verschwindet danach wieder, Änderungen daran wirken also nicht."""
+    kopie = engine / "test_spiel.py"
+    shutil.copy(integ / "test_spiel.py", kopie)
+    lauf.harness("korrektur", "test_spiel.py als Kopie in den Worktree gelegt")
+    try:
+        text, aid = lauf.frage(cfg, "korrektur", runde, suche=[engine], cwd=engine)
+    finally:
+        kopie.unlink(missing_ok=True)
+        shutil.rmtree(engine / "__pycache__", ignore_errors=True)
+    if lauf.demo or not agents.ist_claude(cfg, cfg["rollen"]["korrektur"]):
+        lauf.uebernimm("korrektur", text, engine, ["engine.py"], ["engine.py"])  # ohne Werkzeuge: Code steckt in der Antwort
+    lauf.commit("korrektur", engine, f"Korrektur, Runde {runde}")
+    lauf.event("korrektur", "ok", "engine.py korrigiert", aufruf=aid)
+
+
 def gate(lauf, integ, runde, zeitlimit):
     """Test-Gate: kein Modell. Branches zusammenführen und python test_spiel.py ausführen."""
     lauf.event("gate", "run", f"Test-Gate, Runde {runde}", runde=runde)
@@ -318,6 +337,38 @@ def gate(lauf, integ, runde, zeitlimit):
                         f"**Prüfer:** `python test_spiel.py`, kein Sprachmodell. **Exit-Code:** {code}\n\n```text\n{out[-4000:]}\n```\n")
     lauf.event("gate", "ok" if ok else "fail", f"Runde {runde} {'bestanden' if ok else 'nicht bestanden'}", datei=name, runde=runde)
     return ok
+
+
+def ausfuehren(befehl, cwd, zeitlimit):
+    """Führt einen Prüfbefehl aus. Gibt (Exit-Code, Ausgabe) zurück, auch bei Zeitüberschreitung."""
+    try:
+        r = subprocess.run(befehl, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=zeitlimit)
+        return r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
+    except subprocess.TimeoutExpired as e:
+        teil = e.stdout.decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        return "Zeitlimit", f"{teil.strip()}\n\nABGEBROCHEN nach {zeitlimit} Sekunden.".strip()
+
+
+def abnahme(lauf, integ, runde, zeitlimit):
+    """Abnahme: kein Modell. Engine-Tests noch einmal, dann die Oberfläche im Headless-Browser bedienen."""
+    lauf.event("abnahme", "run", f"Abnahme, Runde {runde}", runde=runde)
+    lauf.harness("abnahme", "Engine-Tests", befehl="python -u test_spiel.py")
+    code_t, out_t = ausfuehren([sys.executable, "-u", "test_spiel.py"], integ, zeitlimit)
+    lauf.harness("abnahme", f"Engine-Tests: Exit-Code {code_t}", warnung=True if code_t != 0 else None)
+    lauf.harness("abnahme", "Oberfläche im Headless-Browser bedienen", befehl="python orchestrator/ui_check.py")
+    code_u, out_u = ausfuehren([sys.executable, str(Path(__file__).with_name("ui_check.py")), str(integ)], integ, 120)
+    if code_u == 3:
+        lauf.harness("abnahme", "Kein Browser gefunden: Oberfläche ungeprüft", warnung=True)
+    else:
+        lauf.harness("abnahme", f"Oberflächen-Test: Exit-Code {code_u}", warnung=True if code_u != 0 else None)
+    ok = code_t == 0 and code_u in (0, 3)
+    name = KNOTEN["abnahme"]["ausgabe"][0].format(runde=runde)
+    bericht = (f"# Abnahme, Runde {runde}: {'bestanden' if ok else 'nicht bestanden'}\n\n"
+               f"**Prüfer:** Skripte, kein Sprachmodell.\n\n## Engine-Tests (Exit-Code {code_t})\n\n```text\n{out_t[-2000:]}\n```\n\n"
+               f"## Oberfläche (Exit-Code {code_u})\n\n```text\n{out_u[-2000:]}\n```\n")
+    lauf.schreibe(name, bericht)
+    lauf.event("abnahme", "ok" if ok else "fail", f"Runde {runde} {'bestanden' if ok else 'nicht bestanden'}", datei=name, runde=runde)
+    return ok, bericht
 
 
 # ---------------------------------------------------------------- Der Ablauf
@@ -394,7 +445,7 @@ def ablauf(lauf, cfg):
             raise RuntimeError(f"Tests nach {max_runden} Runden nicht bestanden")
         lauf.kante("gate", "testcheck", "nicht bestanden")
 
-        text, aid = lauf.frage(cfg, "testcheck", runde, suche=[integ])
+        text, aid = lauf.frage(cfg, "testcheck", runde, suche=[integ], cwd=integ)
         datei = KNOTEN["testcheck"]["ausgabe"][0].format(runde=runde)
         lauf.schreibe(datei, text)
         u = urteil(text, ["engine", "test"]) or "engine"
@@ -425,21 +476,38 @@ def ablauf(lauf, cfg):
             test_korrigiert = True
         else:
             lauf.kante("testcheck", "korrektur", "URTEIL: engine")
-            codeknoten(lauf, cfg, "korrektur", paths["engine"], runde, suche=[paths["engine"], integ])
-            shutil.rmtree(paths["engine"] / "__pycache__", ignore_errors=True)
+            korrektur(lauf, cfg, paths["engine"], integ, runde)
             lauf.kante("korrektur", "gate", f"neue engine.py, Runde {runde + 1}")
 
-    # Integration
-    lauf.event("integration", "run", "Ergebnis sammeln")
+    # Schleife 3: Integrations-Agent → Abnahme, bis Engine und Oberfläche zusammen funktionieren
+    bericht = None
+    for runde in range(1, max_runden + 1):
+        text, aid = lauf.frage(cfg, "integration", runde, nachtrag=bericht, cwd=integ)
+        if lauf.demo:  # steht in der Demo für die Edit-Aufrufe des Agenten
+            shutil.copy(DEMO / "code" / "board.js", integ / "board.js")
+        # Harness-Regel: Der Integrations-Agent darf die Tests nicht anfassen
+        if git("diff", "--quiet", "HEAD", "--", "test_spiel.py", cwd=integ, check=False).returncode:
+            git("checkout", "HEAD", "--", "test_spiel.py", cwd=integ)
+            lauf.harness("integration", "test_spiel.py wurde geändert: zurückgesetzt", befehl="git checkout HEAD -- test_spiel.py", warnung=True)
+        shutil.rmtree(integ / "__pycache__", ignore_errors=True)
+        lauf.commit("integration", integ, f"Integration, Runde {runde}")
+        datei = KNOTEN["integration"]["ausgabe"][0].format(runde=runde)
+        lauf.schreibe(datei, text)
+        lauf.event("integration", "ok", f"{datei} geschrieben", datei=datei, aufruf=aid)
+        ok, bericht = abnahme(lauf, integ, runde, cfg.get("test_zeitlimit", 90))
+        if ok:
+            lauf.kante("abnahme", "freigabe", "bestanden")
+            break
+        if runde == max_runden:
+            raise RuntimeError(f"Abnahme nach {max_runden} Runden nicht bestanden")
+        lauf.kante("abnahme", "integration", f"nicht bestanden, Runde {runde + 1}")
+
     ergebnis = lauf.dir / "ergebnis"
     ergebnis.mkdir()
     for f in integ.iterdir():
         if f.is_file() and f.name != ".git":
             shutil.copy(f, ergebnis / f.name)
-    lauf.harness("integration", "Dateien nach runs/<lauf>/ergebnis kopiert")
-    lauf.schreibe("07-integration.md", "# Integration\n\nAlle Branches sind zusammengeführt und die Tests bestanden.\n\n"
-                                       "**Offen:** Starte den Task „4 Lauf freigeben“, um das Ergebnis nach `main` zu übernehmen.\n")
-    lauf.event("integration", "ok", "Branches zusammengeführt", datei="07-integration.md")
+    lauf.harness("abnahme", "Dateien nach runs/<lauf>/ergebnis kopiert")
     lauf.event("freigabe", "run", "Wartet auf deine Freigabe")
 
 
@@ -451,7 +519,10 @@ def check():
     failed = False
     for name in sorted(set(cfg["rollen"].values())):
         try:
-            agents.api_call(cfg, name, "Antworte nur mit OK.", ausweichen=False)
+            if agents.ist_claude(cfg, name):
+                agents.claude_call(cfg, name, "Antworte nur mit OK.", cwd=RUNS)
+            else:
+                agents.api_call(cfg, name, "Antworte nur mit OK.", ausweichen=False)
             print(f"OK      {name} ({cfg['anbieter'][name]['modell']})")
         except Exception as e:
             failed = True
@@ -482,8 +553,8 @@ def approve(lauf_id):
     lauf.harness("freigabe", "integration nach main gemergt", befehl=f"git merge --no-ff agent/{lauf.id}/integration")
     for n in ("engine", "ui", "tests", "integration"):
         git("worktree", "remove", "--force", str(lauf.wt / n), check=False)
-    lauf.schreibe("08-freigabe.md", "# Freigabe\n\nDer Merge in `main` ist erfolgt.\n")
-    lauf.event("freigabe", "ok", "Merge in main freigegeben", datei="08-freigabe.md")
+    lauf.schreibe("09-freigabe.md", "# Freigabe\n\nDer Merge in `main` ist erfolgt.\n")
+    lauf.event("freigabe", "ok", "Merge in main freigegeben", datei="09-freigabe.md")
     print(f"Fertig. Das Ergebnis liegt in {TARGET}")
     rest = [o for o in offen if o != lauf_id]
     if rest:

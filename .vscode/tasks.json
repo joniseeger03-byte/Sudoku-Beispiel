@@ -78,9 +78,9 @@
     {
       "label": "5 Orchestrator-Tests",
       "type": "shell",
-      "command": "python3 -m unittest -v orchestrator.test_orchestrator orchestrator.test_no_claude_provider",
+      "command": "python3 -m unittest -v orchestrator.test_orchestrator orchestrator.test_anbieter",
       "windows": {
-        "command": "python -m unittest -v orchestrator.test_orchestrator orchestrator.test_no_claude_provider"
+        "command": "python -m unittest -v orchestrator.test_orchestrator orchestrator.test_anbieter"
       },
       "presentation": {
         "panel": "dedicated"

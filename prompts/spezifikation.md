@@ -9,4 +9,5 @@ Berücksichtige die Einwände der Prüfung.
 - `conflicts(grid)` liefert ein Set der Indizes, die in Zeile, Spalte oder Block mit einem anderen Feld kollidieren.
 - `python engine.py neu <stufe>` gibt das Ergebnis von generate als JSON aus.
 - index.html, board.js und style.css bilden die Oberfläche im Browser. board.js holt ein Rätsel mit `fetch('api/neu?stufe=mittel')`, relativ zur Seite, und bekommt dasselbe JSON zurück.
+- Bedienvertrag der Oberfläche: Jedes der 81 Felder ist ein Element mit `data-index="0"` bis `"80"`, seine Ziffer steht als Text darin (kein input). Die Buttons des Ziffernfelds tragen `data-digit="1"` bis `"9"`. Tastatureingaben werden über keydown auf document verarbeitet. Felder im Konflikt tragen die Klasse `konflikt`.
 - test_spiel.py läuft mit `python test_spiel.py` und endet bei einem Fehler mit Exit-Code ungleich 0.

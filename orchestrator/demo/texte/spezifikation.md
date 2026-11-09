@@ -12,6 +12,7 @@
 - `conflicts(grid)` liefert ein Set der Indizes, die in Konflikt stehen.
 - `python engine.py neu <stufe>` gibt das Ergebnis von generate als JSON aus.
 - board.js holt ein Rätsel mit `fetch('api/neu?stufe=mittel')`.
+- Bedienvertrag der Oberfläche: Jedes der 81 Felder ist ein Element mit `data-index="0"` bis `"80"`, seine Ziffer steht als Text darin (kein input). Die Buttons des Ziffernfelds tragen `data-digit="1"` bis `"9"`. Tastatureingaben werden über keydown auf document verarbeitet. Felder im Konflikt tragen die Klasse `konflikt`.
 - test_spiel.py endet bei einem Fehler mit Exit-Code ungleich 0.
 
 ## Abnahmekriterien

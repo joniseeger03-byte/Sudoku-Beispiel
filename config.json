@@ -7,8 +7,9 @@
     "engine": "groq",
     "ui": "openrouter",
     "tests": "groq",
-    "testcheck": "groq",
-    "korrektur": "groq"
+    "testcheck": "claude",
+    "korrektur": "claude",
+    "integration": "claude"
   },
   "anbieter": {
     "groq": {
@@ -23,7 +24,14 @@
     "openrouter": {
       "url": "https://openrouter.ai/api/v1",
       "key": "OPENROUTER_API_KEY",
-      "modell": "google/gemma-3-27b-it"
+      "modell": "google/gemma-3-27b-it",
+      "parameter": {
+        "max_tokens": 8000
+      }
+    },
+    "claude": {
+      "typ": "claude-code",
+      "modell": "sonnet"
     }
   },
   "max_runden": 3,

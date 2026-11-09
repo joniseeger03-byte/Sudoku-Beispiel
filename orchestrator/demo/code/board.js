@@ -2,12 +2,14 @@ const board = document.getElementById('board'), pad = document.getElementById('p
 let game, grid, sel = 0;
 for (let i = 0; i < 81; i++) {
   const b = document.createElement('button');
+  b.dataset.index = i;
   b.onclick = () => { sel = i; draw(); };
   board.append(b);
 }
 for (let d = 0; d <= 9; d++) {
   const b = document.createElement('button');
   b.textContent = d || '⌫';
+  b.dataset.digit = d;
   b.onclick = () => put(d);
   pad.append(b);
 }
@@ -29,7 +31,7 @@ function draw() {
   const bad = conflicts(grid);
   [...board.children].forEach((b, i) => {
     b.textContent = grid[i] || '';
-    b.className = [game.puzzle[i] ? 'given' : '', i === sel ? 'sel' : '', bad.has(i) ? 'bad' : ''].join(' ');
+    b.className = [game.puzzle[i] ? 'given' : '', i === sel ? 'sel' : '', bad.has(i) ? 'konflikt' : ''].join(' ');
   });
 }
 async function start() {

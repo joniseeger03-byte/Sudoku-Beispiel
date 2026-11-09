@@ -2,6 +2,9 @@
 import json
 import os
 import re
+import shutil
+import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -10,6 +13,11 @@ import urllib.request
 # 403 kommt z. B. von Cloudflare-Sperren (Fehler 1010), 429 von Ratenlimits.
 AUSWEICHEN_BEI = {403, 429, 500, 502, 503, 504}
 MAX_WARTEN = 30  # Sekunden: so lange warten wir bei einem Ratenlimit, bevor wir ausweichen
+
+# Claude Code als Agent: darf im Arbeitsordner lesen, schreiben und Python ausführen, sonst nichts.
+WERKZEUGE = ["Read", "Edit", "Write", "Glob", "Grep", "Bash(python:*)", "PowerShell(python:*)"]
+AGENT_ZEITLIMIT = 600
+API_ZEITLIMIT = 120  # Sekunden ohne neue Daten, danach wird ausgewichen
 
 
 class ApiFehler(RuntimeError):
@@ -22,9 +30,23 @@ def nothing(*_):
     pass
 
 
-def anfrage(cfg, anbieter, nachricht):
-    """Beschreibt die HTTP-Anfrage, ohne sie zu senden. Das Dashboard zeigt sie an."""
+def ist_claude(cfg, anbieter):
+    return cfg["anbieter"][anbieter].get("typ") == "claude-code"
+
+
+def claude_befehl(a, werkzeuge):
+    befehl = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
+              "--model", a["modell"], "--strict-mcp-config", "--setting-sources", "project"]
+    if werkzeuge:
+        befehl += ["--permission-mode", "acceptEdits", "--allowedTools", ",".join(WERKZEUGE)]
+    return befehl
+
+
+def anfrage(cfg, anbieter, nachricht, werkzeuge=False):
+    """Beschreibt die Anfrage, ohne sie zu senden. Das Dashboard zeigt sie an."""
     a = cfg["anbieter"][anbieter]
+    if ist_claude(cfg, anbieter):
+        return {"befehl": claude_befehl(a, werkzeuge), "werkzeuge": WERKZEUGE if werkzeuge else [], "modell": a["modell"]}
     body = {"model": a["modell"], "stream": True, **a.get("parameter", {}),
             "messages": [{"role": "user", "content": nachricht}]}
     return {"url": a["url"].rstrip("/") + "/chat/completions", "key": a["key"], "body": body}
@@ -33,7 +55,7 @@ def anfrage(cfg, anbieter, nachricht):
 def api_call(cfg, anbieter, nachricht, live=nothing, wechsel=None, ausweichen=True, melde=nothing):
     """Fragt `anbieter`. Bei kurzem Ratenlimit wird gewartet, bei Sperren oder Überlast der nächste
     Anbieter versucht (`wechsel`). `melde` bekommt Hinweise wie "Antwort abgeschnitten"."""
-    reihenfolge = [anbieter] + ([n for n in cfg["anbieter"] if n != anbieter] if ausweichen else [])
+    reihenfolge = [anbieter] + ([n for n in cfg["anbieter"] if n != anbieter and not ist_claude(cfg, n)] if ausweichen else [])
     letzter, vorher = None, None
     for name in reihenfolge:
         key = os.environ.get(cfg["anbieter"][name]["key"], "").strip()
@@ -61,6 +83,49 @@ def api_call(cfg, anbieter, nachricht, live=nothing, wechsel=None, ausweichen=Tr
     raise letzter or ApiFehler(anbieter, None, "kein Anbieter konfiguriert")
 
 
+def _kurz(werkzeug, eingabe):
+    wert = next((eingabe[k] for k in ("command", "file_path", "pattern") if k in eingabe), "")
+    return f"\n▶ {werkzeug}: {str(wert)[:140]}\n\n"
+
+
+def claude_call(cfg, anbieter, nachricht, live=nothing, cwd=None, werkzeuge=False):
+    """Startet Claude Code im Ordner `cwd`, die Nachricht geht über stdin. Gibt (text, kosten_usd) zurück."""
+    programm = shutil.which("claude")
+    if not programm:
+        raise ApiFehler(anbieter, None, "Claude Code wurde nicht gefunden (Befehl claude)")
+    befehl = [programm] + claude_befehl(cfg["anbieter"][anbieter], werkzeuge)[1:]
+    p = subprocess.Popen(befehl, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         text=True, encoding="utf-8", errors="replace")
+    fehler = []
+    threading.Thread(target=lambda: fehler.append(p.stderr.read()), daemon=True).start()
+    wachhund = threading.Timer(AGENT_ZEITLIMIT, p.kill)
+    wachhund.start()
+    ergebnis = None
+    try:
+        p.stdin.write(nachricht)
+        p.stdin.close()
+        for zeile in p.stdout:
+            try:
+                e = json.loads(zeile)
+            except json.JSONDecodeError:
+                continue
+            if e.get("type") == "assistant":
+                for b in e["message"]["content"]:
+                    if b.get("type") == "text":
+                        live(b["text"] + "\n")
+                    elif b.get("type") == "tool_use":
+                        live(_kurz(b["name"], b.get("input") or {}))
+            elif e.get("type") == "result":
+                ergebnis = e
+        p.wait()
+    finally:
+        wachhund.cancel()
+    if not ergebnis or ergebnis.get("is_error"):
+        detail = (ergebnis or {}).get("result") or "".join(fehler)[:300] or f"Exit-Code {p.returncode}"
+        raise ApiFehler(anbieter, None, f"Claude Code: {detail}")
+    return ergebnis.get("result") or "", ergebnis.get("total_cost_usd")
+
+
 def _wartezeit(e, detail):
     try:
         return float(e.headers.get("retry-after"))
@@ -79,7 +144,7 @@ def _einzeln(cfg, anbieter, nachricht, live, key, melde):
     )
     parts, ende = [], None
     try:
-        with urllib.request.urlopen(req, timeout=300) as r:
+        with urllib.request.urlopen(req, timeout=API_ZEITLIMIT) as r:
             if "text/event-stream" not in r.headers.get("Content-Type", ""):
                 choice = json.load(r)["choices"][0]
                 text, ende = choice["message"]["content"], choice.get("finish_reason")

@@ -3,7 +3,7 @@ body { font-family: system-ui, sans-serif; margin: 24px auto; max-width: 460px; 
 #board button { aspect-ratio: 1; border: 1px solid #c4cfdc; background: #fff; font-size: 20px; color: #2343c9; padding: 0; }
 #board button.given { color: #14233b; font-weight: 700; }
 #board button.sel { background: #dfe6fb; }
-#board button.bad { background: #fbe3e8; color: #bd2445; }
+#board button.konflikt { background: #fbe3e8; color: #bd2445; }
 #board button:nth-child(9n+3), #board button:nth-child(9n+6) { border-right: 3px solid #14233b; }
 #board button:nth-child(n+19):nth-child(-n+27), #board button:nth-child(n+46):nth-child(-n+54) { border-bottom: 3px solid #14233b; }
 #pad { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 12px; }

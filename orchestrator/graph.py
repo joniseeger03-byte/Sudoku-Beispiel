@@ -4,6 +4,7 @@ run.py führt diesen Graphen aus, das Dashboard zeichnet ihn.
 
 Knotenarten:
 - "modell"  ein Sprachmodell-Aufruf. Bekommt prompts/<prompt> plus die Kontext-Dateien.
+- "agent"   wie "modell", aber mit Werkzeugen: arbeitet selbst im Worktree (Claude Code).
 - "skript"  normaler Code ohne Modell, zum Beispiel das Test-Gate.
 - "mensch"  du.
 
@@ -81,20 +82,26 @@ KNOTEN = {
         "ausgabe": ["06-testcheck-runde-{runde}.md"],
     },
     "korrektur": {
-        "titel": "Korrektur", "phase": "test", "art": "modell", "pos": (5, 2),
+        "titel": "Korrektur", "phase": "test", "art": "agent", "pos": (5, 2),
         "prompt": "korrektur.md",
         "kontext": ["03-spezifikation.md", "engine.py", "test_spiel.py", "05-test-gate-runde-{runde}.md"],
         "ausgabe": ["engine.py"],
     },
     "integration": {
-        "titel": "Integration", "phase": "ergebnis", "art": "skript", "pos": (7, 1),
-        "befehl": "git merge",
-        "ausgabe": ["07-integration.md"],
+        "titel": "Integration", "phase": "ergebnis", "art": "agent", "pos": (7, 1),
+        "prompt": "integration.md",
+        "kontext": ["03-spezifikation.md"],
+        "ausgabe": ["07-integration-runde-{runde}.md"],
+    },
+    "abnahme": {
+        "titel": "Abnahme", "phase": "ergebnis", "art": "skript", "pos": (8, 1),
+        "befehl": "python test_spiel.py && python ui_check.py",
+        "ausgabe": ["08-abnahme-runde-{runde}.md"],
     },
     "freigabe": {
-        "titel": "Freigabe", "phase": "ergebnis", "art": "mensch", "pos": (8, 1),
+        "titel": "Freigabe", "phase": "ergebnis", "art": "mensch", "pos": (9, 1),
         "befehl": "python orchestrator/run.py --freigabe",
-        "ausgabe": ["08-freigabe.md"],
+        "ausgabe": ["09-freigabe.md"],
     },
 }
 
@@ -118,7 +125,9 @@ KANTEN = [
     ("testcheck", "korrektur", "bedingt", "URTEIL: engine"),
     ("testcheck", "tests", "schleife", "URTEIL: test"),
     ("korrektur", "gate", "schleife", "neue engine.py"),
-    ("integration", "freigabe", "", ""),
+    ("integration", "abnahme", "", ""),
+    ("abnahme", "freigabe", "bedingt", "bestanden"),
+    ("abnahme", "integration", "schleife", "nicht bestanden"),
 ]
 
 

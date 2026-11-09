@@ -1,7 +1,6 @@
 import io
 import json
 import os
-import pathlib
 import unittest
 import urllib.error
 from unittest.mock import patch
@@ -9,19 +8,8 @@ from unittest.mock import patch
 import orchestrator.agents as agents
 
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-
-class NoClaudeProviderTest(unittest.TestCase):
-    def test_run_module_has_no_hardcoded_claude_calls(self):
-        source = (ROOT / "orchestrator" / "run.py").read_text(encoding="utf-8")
-        self.assertNotIn("claude", source.lower())
-
-    def test_config_uses_only_api_providers(self):
-        cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
-        allowed = {"groq", "openrouter"}
-        self.assertTrue(set(cfg["rollen"].values()).issubset(allowed))
-
+class AnbieterTest(unittest.TestCase):
     def test_api_call_falls_back_to_openrouter_on_groq_403(self):
         cfg = {
             "anbieter": {

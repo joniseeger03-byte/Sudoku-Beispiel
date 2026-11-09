@@ -30,7 +30,7 @@ class GraphTest(unittest.TestCase):
     def test_modellknoten_haben_prompt_rolle_und_demo_antwort(self):
         cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
         for name, k in graph.KNOTEN.items():
-            if k["art"] != "modell":
+            if k["art"] not in ("modell", "agent"):
                 continue
             self.assertTrue((ROOT / "prompts" / k["prompt"]).is_file(), k["prompt"])
             self.assertIn(name, cfg["rollen"], f"Rolle {name} fehlt in config.json")
@@ -84,6 +84,19 @@ class AgentsTest(unittest.TestCase):
             with self.assertRaises(agents.ApiFehler):
                 agents.api_call(self.cfg, "groq", "Hallo", ausweichen=False)
             self.assertEqual(m.call_count, 1)
+
+    def test_claude_ist_kein_ausweichziel(self):
+        cfg = {"anbieter": {**self.cfg["anbieter"], "claude": {"typ": "claude-code", "modell": "sonnet"}}}
+        with patch.dict(os.environ, {"GROQ_API_KEY": "g", "OPENROUTER_API_KEY": "o"}), \
+                patch("agents.urllib.request.urlopen", side_effect=self.fehler(503)) as m:
+            with self.assertRaises(agents.ApiFehler):
+                agents.api_call(cfg, "groq", "Hallo")
+            self.assertEqual(m.call_count, 2)
+
+    def test_agent_bekommt_werkzeuge_urteiler_nicht(self):
+        a = {"typ": "claude-code", "modell": "sonnet"}
+        self.assertIn("--allowedTools", agents.claude_befehl(a, True))
+        self.assertNotIn("--allowedTools", agents.claude_befehl(a, False))
 
     def test_wechsel_wird_gemeldet(self):
         gemeldet = []
