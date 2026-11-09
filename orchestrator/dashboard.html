@@ -14,7 +14,7 @@
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Segoe UI", sans-serif; }
 button, select { font: inherit; color: inherit; }
 code, pre, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-.wrap { max-width: 1280px; margin: auto; padding: 20px 16px 48px; display: grid; gap: 18px; }
+.wrap { max-width: 1560px; margin: auto; padding: 20px 16px 16px; display: grid; gap: 18px; }
 
 /* Kopf */
 .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
@@ -34,19 +34,6 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .runstate { font-weight: 600; }
 .runstate.run { color: var(--accent); } .runstate.ok { color: var(--ok); } .runstate.fail { color: var(--bad); } .runstate.wait { color: var(--warn); }
 
-/* Teil 1: Schritte */
-.steps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 2px solid var(--heavy); background: var(--panel); border-radius: 6px; overflow: hidden; }
-.step { padding: 10px 12px; border-right: 1px solid var(--line); cursor: pointer; background: none; border-top: 0; border-bottom: 4px solid transparent; border-left: 0; text-align: left; min-width: 0; }
-.step:last-child { border-right: 0; }
-.step .n { font-size: .72rem; color: var(--muted); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
-.step .t { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.step .s { font-size: .8rem; color: var(--muted); }
-.step[data-s=run] { background: var(--soft); } .step[data-s=run] .s { color: var(--accent); font-weight: 600; }
-.step[data-s=ok] .s { color: var(--ok); font-weight: 600; }
-.step[data-s=fail] { background: var(--badsoft); } .step[data-s=fail] .s { color: var(--bad); font-weight: 600; }
-.step.sel { border-bottom-color: var(--ink); }
-@media (max-width: 760px) { .steps { grid-template-columns: repeat(4, minmax(0,1fr)); } .step { border-bottom: 1px solid var(--line); } }
-
 /* Teil 2: Graph */
 .graphbox { background: var(--panel); border: 2px solid var(--heavy); border-radius: 6px; overflow-x: auto; }
 #graph { display: block; min-width: 900px; width: 100%; height: auto; }
@@ -55,8 +42,8 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 #graph .edge { fill: none; stroke: var(--line); stroke-width: 1.6; }
 #graph .edge.on { stroke: var(--heavy); stroke-width: 2; }
 #graph .edge.loop { stroke-dasharray: 5 4; }
-#graph .edge.loop.on { stroke: var(--warn); }
-#graph .elabel { font-size: 10.5px; fill: var(--muted); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
+#graph .edge.loop.on { stroke: var(--warn); stroke-width: 3.5; }
+#graph .elabel { font-size: 12.5px; fill: var(--muted); paint-order: stroke; stroke: var(--panel); stroke-width: 4px; }
 #graph .elabel.on { fill: var(--ink); font-weight: 600; }
 #graph .elabel.loop.on { fill: var(--warn); }
 #graph .node { cursor: pointer; }
@@ -65,11 +52,7 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 #graph .node.s-ok rect { fill: var(--oksoft); stroke: var(--ok); }
 #graph .node.s-fail rect { fill: var(--badsoft); stroke: var(--bad); }
 #graph .node.sel rect { stroke: var(--ink); stroke-width: 3; }
-#graph .node .t { font-size: 13px; font-weight: 600; fill: var(--ink); }
-#graph .node .m { font-size: 10px; fill: var(--muted); font-family: ui-monospace, Consolas, monospace; }
-#graph .node .st { font-size: 10.5px; fill: var(--muted); }
-#graph .node.s-run .st { fill: var(--accent); font-weight: 600; }
-#graph .node.s-ok .st { fill: var(--ok); } #graph .node.s-fail .st { fill: var(--bad); font-weight: 600; }
+#graph .node .t { font-size: 15.5px; font-weight: 600; fill: var(--ink); text-anchor: middle; }
 #graph .node rect.rbadge { fill: var(--warn); stroke: none; animation: none; } #graph .rbadge-t { fill: var(--panel); font-size: 10px; font-weight: 700; }
 @keyframes pulse { 50% { stroke-opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { #graph .node.s-run rect { animation: none; } }
@@ -165,37 +148,91 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 .log .warn, .hl .warn { color: var(--warn); font-weight: 600; }
 .log .warn::before, .hl .warn::before { content: "\26A0  "; }
 #graph .warnmark { fill: var(--warn); } #graph .warnmark-t { fill: var(--panel); font-size: 11px; font-weight: 800; }
+/* Vorführung: Bausteine, Erklärungen, Aufklappbares */
+.zustand { font-size: .9rem; }
+.laufbox { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.flow { display: grid; grid-template-columns: minmax(0,2fr) auto minmax(0,2fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,2fr); gap: 8px; align-items: stretch; padding: 14px; border-bottom: 1.5px solid var(--heavy); }
+.flow .op { align-self: center; font-size: 1.6rem; color: var(--muted); padding: 0 2px; }
+.flow button { background: var(--bg); border: 2px solid var(--line); border-radius: 8px; padding: 18px 12px; text-align: center; cursor: pointer; min-width: 0; }
+.flow button:hover { border-color: var(--heavy); }
+.flow button.on { background: var(--ink); border-color: var(--ink); color: var(--panel); }
+.flow b { display: block; font-size: 1.7rem; line-height: 1.2; }
+.flow button.klein b { font-size: 1.1rem; }
+.flow button.leer { opacity: .5; }
+.erkl { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.erkl .kern { display: flex; gap: 16px; justify-content: space-between; align-items: center; font-size: 1.25rem; }
+.info { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--heavy); background: none; color: inherit; font: italic 700 1.15rem Georgia, serif; cursor: pointer; flex: none; }
+.info.offen { background: var(--ink); color: var(--panel); font-style: normal; }
+.erkl .wert { margin: 10px 0 0; font-weight: 600; }
+.erkl ul { margin: 8px 0 0; padding-left: 20px; }
+.erkl li { margin: 4px 0; }
+.pfad { margin: 0; padding: 8px 16px 0; font-size: .82rem; color: var(--muted); }
+#panel { display: flex; flex-direction: column; height: calc(100vh - 100px); min-height: 480px; }
+body.teil2 #panel { height: calc(100vh - 190px); }
+#panel .pane { flex: 1; height: auto; min-height: 0; }
+.haken { list-style: none; margin: 0 0 14px; padding: 0; font-size: 1.1rem; }
+.haken li { padding: 6px 0; }
+.haken li::before { content: "\2713"; color: var(--ok); font-weight: 700; margin-right: 10px; }
+.haken li.warn { color: var(--warn); } .haken li.warn::before { content: "\26A0"; color: var(--warn); }
+.haken li.kante { color: var(--warn); } .haken li.kante::before { content: "\2192"; color: var(--warn); }
+.v2kopf { display: flex; gap: 12px; align-items: flex-start; }
+.v2kopf .konzept { flex: 1; min-width: 0; }
+#ansicht { flex: none; padding-top: 10px; }
+#protokoll { flex-basis: 100%; }
+.pane pre.raw { font-size: .92rem; }
+.fakten { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 6px 18px; margin: 0 0 14px; }
+.fakten dt { color: var(--muted); } .fakten dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+details.tech > summary, details.mehr > summary { cursor: pointer; color: var(--accent); }
+details.tech[open] > summary { margin-bottom: 10px; }
+details.mehr { background: var(--panel); border: 1.5px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+details.mehr[open] > summary { margin-bottom: 10px; }
+.konzept { border-bottom: 0; padding-left: 0; }
+.unter { margin-top: 10px; }
+@media (max-width: 860px) { .flow { grid-template-columns: minmax(0,1fr); } .flow .op { display: none; } }
 [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>Agentenlauf <span class="badge" id="modus" hidden></span></h1>
+    <h1>Sudoku-Agenten</h1>
     <div class="controls">
+      <span class="zustand" id="zustand"></span>
       <div class="seg" role="group" aria-label="Ansicht">
-        <button id="t1" title="Taste 1">Teil 1 · Ein Agent</button>
-        <button id="t2" title="Taste 2">Teil 2 · Graph</button>
+        <button id="t1">Teil 1 · Ein Agent</button>
+        <button id="t2">Teil 2 · Loop und Graph</button>
       </div>
-      <button class="btn" id="follow" title="Taste F">Live folgen</button>
-      <select id="run" aria-label="Lauf wählen"></select>
       <a class="btn primary" id="play" hidden target="_blank" rel="noopener">Ergebnis spielen</a>
+      <button class="btn" id="mehr" aria-expanded="false">Lauf ▾</button>
     </div>
   </div>
-  <div class="startline" id="startline"></div>
-
-  <section id="v1"><div class="steps" id="steps"></div></section>
+  <div class="laufbox" id="laufbox" hidden>
+    <span class="badge" id="modus" hidden></span>
+    <select id="run" aria-label="Lauf wählen"></select>
+    <label>Agent in Teil 1 <select id="agent"></select></label>
+    <button class="btn" id="follow">Live folgen</button>
+    <div class="startline" id="startline"></div>
+    <details class="mehr" id="protokoll">
+      <summary>Protokoll: jeder Schritt dieses Laufs</summary>
+      <ol class="log" id="log"></ol>
+    </details>
+  </div>
 
   <section id="v2" hidden>
-    <div class="graphbox">
-      <svg id="graph" role="img" aria-label="Ablauf als Graph"></svg>
-      <div class="legend"><span><i></i>Kante genommen</span><span><i class="loop"></i>Schleife zurück, mit Anzahl</span><span>Blau pulsierend: arbeitet gerade</span><span>Orange ! = Harness hat eingegriffen</span><span>Klick auf einen Knoten zeigt Details</span></div>
+    <div class="v2kopf">
+      <div class="konzept erkl" id="konzept"></div>
+      <div class="controls" id="ansicht">
+        <button class="btn" data-a="graph">← Graph</button><button class="btn" data-a="zeit">Zeitleiste</button><button class="btn" data-a="live">Live</button>
+      </div>
     </div>
-    <div style="margin-top:16px">
-      <div class="wallhead"><h2>Zeitleiste</h2><span class="hint">Ein Balken je Modell-Aufruf oder Test-Gate · übereinander = gleichzeitig</span></div>
+    <div class="graphbox unter" id="graphbox">
+      <svg id="graph" role="img" aria-label="Ablauf als Graph"></svg>
+    </div>
+    <div class="unter" id="tlbox" hidden>
+      <div class="wallhead"><h2>Zeitleiste</h2><span class="hint">Übereinander = gleichzeitig</span></div>
       <div class="tl" id="tl"></div>
     </div>
-    <div style="margin-top:16px">
+    <div class="unter" id="wallbox" hidden>
       <div class="wallhead"><h2 id="wallTitle">Live</h2><span class="hint" id="wallHint"></span></div>
       <div class="wall" id="wall"></div>
     </div>
@@ -203,24 +240,11 @@ a.btn.primary { background: var(--accent); color: var(--panel); border-color: va
 
   <section class="panel" id="panel">
     <div class="panelhead"><div class="who" id="who"></div><div class="rounds" id="rounds"></div></div>
-    <div class="panelbody">
-      <div>
-        <div class="tabs" id="tabs">
-          <button data-t="prompt">Prompt</button><button data-t="kontext">Kontext</button><button data-t="aufruf">Aufruf</button><button data-t="harness">Harness</button>
-          <span class="lbl">Was der Agent bekommt</span>
-        </div>
-        <div class="pane" id="left"></div>
-      </div>
-      <div>
-        <div class="tabs"><button class="on">Ausgabe</button><span class="lbl" id="outlbl"></span></div>
-        <div class="pane out" id="out"></div>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <div class="loghead"><h2>Protokoll</h2><span class="hint" id="loghint"></span></div>
-    <ol class="log" id="log"></ol>
+    <div class="flow" id="tabs"></div>
+    <div class="erkl" id="erkl"></div>
+    <p class="pfad" id="outlbl" hidden></p>
+    <div class="pane" id="left"></div>
+    <div class="pane out" id="out" hidden></div>
   </section>
 </div>
 <script>
@@ -251,6 +275,50 @@ let G = null, D = null, current = null, follow = true;
 let teil = location.hash === '#teil2' ? 2 : 1, tab = 'prompt';
 let selK = null, selA = null;   // gewählter Knoten und (optional) fester Aufruf
 const records = {};              // volle Aufruf-Daten (Prompt, Kontext), unveränderlich
+let ansicht = 'graph', erklaert = null, agent1 = 'engine';
+
+// Nur neu zeichnen, wenn sich etwas geändert hat: Sonst gehen Klicks zwischen zwei Takten verloren.
+function setHtml(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; } }
+
+const BAUSTEINE = [
+  { t: 'prompt', name: 'Prompt', frage: 'Was soll es tun?' },
+  { t: 'kontext', name: 'Kontext', frage: 'Was weiß es?' },
+  { t: 'aufruf', name: 'Modell', frage: 'Wer arbeitet?' },
+  { t: 'ausgabe', name: 'Antwort', frage: 'Was kommt zurück?' },
+  { t: 'harness', name: 'Harness', frage: 'Was macht Code daraus?' },
+];
+const OPS = ['+', '→', '→', '→'];
+const ERKL = {
+  prompt: { kern: '<b>Prompt Engineering:</b> Eine Datei legt Rolle, Regeln und Ausgabeformat des Agenten fest.', lang: [
+    'Der Prompt gehört zum Projekt: Er liegt unter <code>prompts/</code> und wird wie Code versioniert.',
+    'Er nennt die Aufgabe, die Grenzen und das genaue Ausgabeformat, denn die Antwort wird maschinell weiterverarbeitet.',
+    'Beispiel: Die Oberfläche muss einen festen Bedienvertrag einhalten, sonst kann das Prüfskript das Spiel nicht spielen.' ] },
+  kontext: { kern: '<b>Kontext Engineering:</b> Das Modell weiß nur, was in dieser einen Nachricht steht.', lang: [
+    'Jeder Agent bekommt gezielt die Dateien, die er braucht. Die Auswahl steht in <code>orchestrator/graph.py</code>.',
+    'Die Engine sieht nur die Spezifikation, nicht die Recherche. Das hält sie beim Vertrag.',
+    'Zu wenig Kontext führt zum Raten, zu viel kostet Tokens und lenkt ab.' ] },
+  aufruf: { kern: '<b>Modell:</b> Austauschbar. <code>config.json</code> legt fest, wer welche Rolle übernimmt.', lang: [
+    'Einfache Rollen sind ein HTTP-Aufruf: eine Nachricht rein, eine Antwort raus.',
+    'Agenten mit Werkzeugen arbeiten selbst im Ordner. Sie dürfen nur, was ausdrücklich freigegeben ist.',
+    'Fällt ein Anbieter aus, weicht die Harness auf einen anderen aus und meldet das.' ] },
+  ausgabe: { kern: '<b>Antwort:</b> Zunächst nur Text. Erst der Code drumherum macht daraus Dateien.', lang: [
+    'Die Antwort wird live gestreamt, man sieht das Modell arbeiten.',
+    'Ob sie etwas taugt, entscheidet nicht das Modell, sondern der nächste Baustein.' ] },
+  harness: { kern: '<b>Harness Engineering:</b> Normaler Code prüft und steuert, was das Modell liefert.', lang: [
+    'Sie übernimmt Codeblöcke in Dateien, prüft die Syntax und committet in einen eigenen Git-Worktree.',
+    'Über „bestanden“ entscheiden Tests und ein Browser-Skript, das das Spiel wirklich spielt. Kein Modell benotet sich selbst.',
+    'Ist eine Antwort unbrauchbar, fragt sie genau einmal mit dem Fehler nach. Scheitert es weiter, scheitert der Lauf sichtbar.' ] },
+  graph: { kern: '<b>Graph:</b> Viele Agenten mit klarer Reihenfolge. <b>Loop:</b> Ein Prüfer schickt Arbeit zurück, bis sie besteht.', lang: [
+    'Knoten sind Sprachmodelle, Agenten mit Werkzeugen, Skripte oder du. Kanten legen fest, was danach dran ist.',
+    'Recherche und Umsetzung laufen parallel, jeder Agent in seinem eigenen Arbeitsstand.',
+    'Bedingte Kanten folgen einem Urteil oder einem Testergebnis. Das entscheidet normaler Code.',
+    'Jede Schleife hat eine harte Obergrenze, danach bricht der Lauf ab. Am Ende gibt ein Mensch frei.' ] },
+};
+function erklHtml(id, wert) {
+  const e = ERKL[id], offen = erklaert === id;
+  return `<div class="kern"><span>${e.kern}</span><button class="info ${offen ? 'offen' : ''}" data-erkl="${id}" title="${offen ? 'Schließen' : 'Genauer erklären'}" aria-label="${offen ? 'Schließen' : 'Genauer erklären'}" aria-expanded="${offen}">${offen ? '×' : 'i'}</button></div>` +
+    (offen ? `${wert ? `<p class="wert">${wert}</p>` : ''}<ul>${e.lang.map(x => `<li>${x}</li>`).join('')}</ul>` : '');
+}
 
 // ---------------------------------------------------------------- Ableitungen aus den Events
 const known = e => G.knoten[e.knoten];
@@ -259,12 +327,6 @@ function callsOf(k) { return Object.values(D.aufrufe).filter(a => a.knoten === k
 function phaseOf(k) { return G.knoten[k].phase; }
 function phaseNodes(p) { return Object.keys(G.knoten).filter(k => phaseOf(k) === p); }
 function phaseTitle(p) { return (G.phasen.find(x => x.id === p) || {}).titel || p; }
-function phaseState(p) {
-  const ks = phaseNodes(p);
-  if (ks.some(k => stateOf(k) === 'run')) return 'run';
-  let s = 'wait'; for (const e of D.events) if (ks.includes(e.knoten) && LABEL[e.status]) s = e.status;
-  return s;
-}
 function rounds(k) { return SKRIPTE.includes(k) ? D.events.filter(e => e.knoten === k && e.status === 'run').length : callsOf(k).length; }
 function kantenCount(a, b) { return D.events.filter(e => e.status === 'kante' && e.von === a && e.nach === b).length; }
 function runState() {
@@ -279,15 +341,16 @@ function autoSelect() {
   const ev = D.events.filter(e => known(e) && LABEL[e.status]);
   if (!ev.length) return;
   if (selK && stateOf(selK) === 'run') return;            // aktueller Agent arbeitet noch: bleiben
-  const running = ev.filter(e => e.status === 'run' && stateOf(e.knoten) === 'run');
-  selK = (running.length ? running[running.length - 1] : ev[ev.length - 1]).knoten;
+  // Arbeitet niemand (mehr), zeigen wir den letzten Agenten. Auf „Freigabe“ gäbe es nichts zu erklären.
+  const running = ev.filter(e => e.status === 'run' && stateOf(e.knoten) === 'run' && G.knoten[e.knoten].art !== 'mensch');
+  const agenten = ev.filter(e => KI(G.knoten[e.knoten].art));
+  selK = (running.length ? running[running.length - 1] : agenten.length ? agenten[agenten.length - 1] : ev[ev.length - 1]).knoten;
   selA = null;
 }
 function modelLabel(k) {
   const a = callsOf(k).pop(); if (a) return `${a.anbieter} · ${a.modell}`;
   const r = (D.start.rollen || {})[k]; return r ? `${r.anbieter} · ${r.modell}` : '';
 }
-const short = s => s.length > 19 ? s.slice(0, 18) + '…' : s;
 // Tokens grob geschätzt: etwa 4 Zeichen pro Token
 const tokIn = a => Math.round(((a.prompt_zeichen || 0) + (a.kontext || []).reduce((n, c) => n + c.zeichen, 0)) / 4);
 const tokOut = a => Math.round((a.antwort_zeichen || (D.live[a.id] || '').length) / 4);
@@ -315,21 +378,26 @@ function renderHead() {
   $('t1').classList.toggle('on', teil === 1); $('t2').classList.toggle('on', teil === 2);
   $('follow').textContent = follow ? 'Live folgen: an' : 'Live folgen';
   $('follow').classList.toggle('on', follow);
-  $('v1').hidden = teil !== 1; $('v2').hidden = teil !== 2;
+  $('v2').hidden = teil !== 2;
+  document.body.classList.toggle('teil2', teil === 2);
+  setHtml($('zustand'), st === 'run' || st === 'fail' ? `<span class="runstate ${st}">${esc(txt)}</span>` : '');
+  $('panel').hidden = teil === 2 && ansicht !== 'knoten';
+  $('graphbox').hidden = ansicht !== 'graph';
+  $('tlbox').hidden = ansicht !== 'zeit'; $('wallbox').hidden = ansicht !== 'live';
+  const laeuft = Object.values(D.aufrufe).some(a => a.status === 'run');
+  [...$('ansicht').children].forEach(b => { b.hidden = b.dataset.a === 'graph' ? ansicht === 'graph' : b.dataset.a === ansicht || (b.dataset.a === 'live' && !laeuft); });
 }
 
-// ---------------------------------------------------------------- Teil 1: Schritte
-function renderSteps() {
-  const selP = selK ? phaseOf(selK) : null;
-  $('steps').innerHTML = G.phasen.map((p, i) => {
-    const s = phaseState(p.id);
-    const txt = p.id === 'ergebnis' && stateOf('freigabe') === 'run' ? 'wartet auf dich' : LABEL[s];
-    return `<button class="step ${p.id === selP ? 'sel' : ''}" data-p="${p.id}" data-s="${s}"><span class="n">Schritt ${i + 1}</span><span class="t">${esc(p.titel)}</span><span class="s">${txt}</span></button>`;
-  }).join('');
+// ---------------------------------------------------------------- Teil 2: Loop und Graph erklären
+function renderKonzept() {
+  const n = D.start.max_runden;
+  const loops = [['Recherche ↔ Prüfung', kantenCount('pruefung', 'recherche_a')], ['Tests ↔ Korrektur', kantenCount('gate', 'testcheck')], ['Integration ↔ Abnahme', kantenCount('abnahme', 'integration')]];
+  const genommen = loops.filter(l => l[1]).map(([t, c]) => `${t}: ${c}× zurück`);
+  setHtml($('konzept'), erklHtml('graph', [...genommen, ...(n ? [`höchstens ${n} Runden`] : [])].join(' · ')));
 }
 
 // ---------------------------------------------------------------- Teil 2: Graph
-const C = { colw: 146, nw: 114, nh: 62, rowh: 104, x0: 14, y0: 70 };
+const C = { colw: 146, nw: 114, nh: 62, rowh: 104, x0: 14, y0: 22 };
 function P(k) { const [c, r] = G.knoten[k].pos; return { x: C.x0 + c * C.colw, y: C.y0 + r * C.rowh, c, r }; }
 function edgeGeom(a, b) {
   const A = P(a), B = P(b); let p;
@@ -348,7 +416,7 @@ function renderGraph() {
   G.phasen.forEach((ph, i) => {
     const cs = phaseNodes(ph.id).map(k => G.knoten[k].pos[0]);
     const x1 = C.x0 + Math.min(...cs) * C.colw - 9, x2 = C.x0 + Math.max(...cs) * C.colw + C.nw + 9;
-    out += `<rect class="band ${i % 2 ? 'alt' : ''}" x="${x1}" y="0" width="${x2 - x1}" height="${H}"/><text class="bandlabel" x="${x1 + 8}" y="20">${esc(ph.titel)}</text>`;
+    out += `<rect class="band ${i % 2 ? 'alt' : ''}" x="${x1}" y="0" width="${x2 - x1}" height="${H}"/>`;
   });
   for (const e of G.kanten) {
     const g = edgeGeom(e.von, e.nach), n = kantenCount(e.von, e.nach);
@@ -360,12 +428,9 @@ function renderGraph() {
   }
   for (const k of Object.keys(G.knoten)) {
     const n = G.knoten[k], p = P(k), s = stateOf(k), r = rounds(k);
-    const sub = KI(n.art) ? short(modelLabel(k).split(' · ').pop().split('/').pop() + (n.art === 'agent' ? ' + Werkzeuge' : '')) : n.art === 'skript' ? short(n.befehl || 'Skript') : 'Du';
-    out += `<g class="node s-${s} ${k === selK ? 'sel' : ''}" data-k="${k}" transform="translate(${p.x},${p.y})"><title>${esc(n.titel)}: ${esc(ART[n.art])}</title>
+    out += `<g class="node s-${s}" data-k="${k}" transform="translate(${p.x},${p.y})"><title>${esc(n.titel)}: ${esc(ART[n.art])}${KI(n.art) ? ` · ${esc(modelLabel(k))}` : ''}</title>
       <rect width="${C.nw}" height="${C.nh}" rx="8"/>
-      <text class="t" x="10" y="20">${esc(n.titel)}</text>
-      <text class="m" x="10" y="36">${esc(sub)}</text>
-      <text class="st" x="10" y="53">${s === 'run' && k === 'freigabe' ? 'wartet auf dich' : LABEL[s]}</text>
+      <text class="t" x="${C.nw / 2}" y="${C.nh / 2 + 5}">${esc(n.titel)}</text>
       ${warned(k) ? `<circle class="warnmark" cx="0" cy="0" r="8"/><text class="warnmark-t" x="0" y="4" text-anchor="middle">!</text>` : ''}
       ${r > 1 ? `<rect class="rbadge" x="${C.nw - 34}" y="-8" width="30" height="16" rx="8"/><text class="rbadge-t" x="${C.nw - 19}" y="4" text-anchor="middle">R${r}</text>` : ''}
     </g>`;
@@ -437,35 +502,41 @@ async function record(id) {
   return records[id];
 }
 function harnessEvents() {
-  const scope = teil === 1 ? phaseNodes(phaseOf(selK)) : [selK];
-  return D.events.filter(e => scope.includes(e.knoten) && (e.status === 'harness' || (teil === 2 && e.status === 'kante')));
+  return D.events.filter(e => e.knoten === selK && (e.status === 'harness' || (teil === 2 && e.status === 'kante')));
 }
 let panelKey = '';
 function renderPanel() {
-  if (!selK) { $('who').innerHTML = '<span class="empty">Noch nichts gestartet.</span>'; $('left').innerHTML = ''; $('out').innerHTML = ''; return; }
+  if (!selK) { setHtml($('who'), '<span class="empty">Noch nichts gestartet.</span>'); $('left').innerHTML = ''; $('out').innerHTML = ''; return; }
   const { k, node, calls, call } = selection();
   const s = call ? call.status : stateOf(k);
   const t1 = KI(node.art) ? 'Agent' : node.art === 'skript' ? 'Harness' : 'Du';
   const title = teil === 1 ? `${t1} <span class="sub">· ${esc(phaseTitle(node.phase))}</span>` : `${esc(node.titel)} <span class="sub">· ${esc(ART[node.art])}</span>`;
-  const model = call ? `<span class="chip">${esc(call.anbieter)} · ${esc(call.modell)}${call.simuliert ? ' · Demo' : ''}</span>` : '';
-  const runde = call && call.runde > 1 ? `<span class="chip">Runde ${call.runde}</span>` : '';
-  const tok = call ? `<span class="chip" title="geschätzt: 4 Zeichen ≈ 1 Token">≈ ${kb(tokIn(call))} Tokens rein · ${kb(tokOut(call))} raus</span>` : '';
-  $('who').innerHTML = `<h2>${title}</h2><span class="chip ${s}">${LABEL[s] || s}</span>${model}${runde}${tok}`;
-  $('rounds').innerHTML = teil === 2 && calls.length > 1 ? calls.map(a => `<button data-a="${a.id}" class="${a.id === (call || {}).id ? 'on' : ''}">Runde ${a.runde}</button>`).join('') : '';
-  [...$('tabs').querySelectorAll('button')].forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  $('who').parentElement.hidden = teil === 1;
+  setHtml($('who'), `<h2>${title}</h2>`);
+  setHtml($('rounds'), teil === 2 && calls.length > 1 ? calls.map(a => `<button data-a="${a.id}" class="${a.id === (call || {}).id ? 'on' : ''}">Runde ${a.runde}</button>`).join('') : '');
 
   const hv = harnessEvents();
+  const ki = KI(node.art), wert = {
+    prompt: ki ? `prompts/${node.prompt}` : 'kein Modell',
+    kontext: !ki ? 'kein Modell' : call ? `${(call.kontext || []).length} Dateien · ${kb((call.kontext || []).reduce((n, c) => n + c.zeichen, 0))} Zeichen` : `${(node.kontext || []).length} Dateien`,
+    aufruf: !ki ? 'Skript' : call ? call.modell.split('/').pop() : modelLabel(k).split(' · ').pop().split('/').pop(),
+    ausgabe: call && call.antwort_zeichen ? `${kb(call.antwort_zeichen)} Zeichen` : s === 'run' ? 'läuft …' : ki ? '–' : 'Bericht',
+    harness: `${hv.length} Schritte`,
+  };
+  setHtml($('tabs'), BAUSTEINE.map((b, i) => `<button data-t="${b.t}" class="${b.t === tab ? 'on' : ''} ${['aufruf', 'ausgabe'].includes(b.t) ? 'klein' : ''} ${!ki && ['prompt', 'kontext', 'aufruf'].includes(b.t) ? 'leer' : ''}"><b>${b.name}</b></button>${i < OPS.length ? `<span class="op">${OPS[i]}</span>` : ''}`).join(''));
+  const baustein = BAUSTEINE.find(b => b.t === tab);
+  setHtml($('erkl'), erklHtml(tab, `${baustein.frage} ${esc(wert[tab])}`));
+  $('left').hidden = tab === 'ausgabe'; $('out').hidden = tab !== 'ausgabe'; $('outlbl').hidden = tab !== 'ausgabe';
+
   const key = [teil, k, call && call.id, call && call.status, tab, hv.length, s].join('|');
   if (key !== panelKey) { panelKey = key; renderLeft(node, call, hv, key); }
   renderOut(node, call);
 }
 async function renderLeft(node, call, hv, key) {
   const left = $('left');
+  if (tab === 'ausgabe') return;
   if (tab === 'harness') {
-    const intro = teil === 1
-      ? 'Normaler Code rund um das Modell: Antwort in Dateien übernehmen, prüfen, committen, Tests ausführen. Kein Sprachmodell entscheidet hier.'
-      : 'Was der Orchestrator für diesen Knoten getan hat, inklusive der Kanten, die er danach genommen hat.';
-    left.innerHTML = `<p class="note">${intro}</p>` + (hv.length ? `<ul class="hl">${hv.map(e => `<li><time>${esc(e.zeit)}</time><span class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text)}</span>${e.befehl ? `<code>${esc(e.befehl)}</code>` : ''}</li>`).join('')}</ul>` : '<p class="empty">Noch keine Harness-Schritte.</p>');
+    left.innerHTML = (hv.length ? `<ul class="haken">${hv.map(e => `<li class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text.replace(/ \(.*$/, ''))}</li>`).join('')}</ul><details class="tech"><summary>Befehle zeigen</summary><ul class="hl">${hv.map(e => `<li><time>${esc(e.zeit)}</time><span class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text)}</span>${e.befehl ? `<code>${esc(e.befehl)}</code>` : ''}</li>`).join('')}</ul></details>` : '<p class="empty">Noch keine Harness-Schritte.</p>');
     return;
   }
   if (!KI(node.art)) {
@@ -486,34 +557,28 @@ async function renderLeft(node, call, hv, key) {
   const rec = await record(call.id);
   if (key !== panelKey || !rec) return;
   if (tab === 'prompt') {
-    left.innerHTML = `<p class="note">Die Rollenanweisung. Sie steht als Datei im Repo und geht unverändert an das Modell.</p>
-      <div class="filehead"><code>${esc(rec.prompt_datei)}</code><span class="hint">${kb(rec.prompt.length)} Zeichen</span></div><pre class="raw box">${esc(rec.prompt)}</pre>`;
+    left.innerHTML = `<div class="filehead"><code>${esc(rec.prompt_datei)}</code><span class="hint">${kb(rec.prompt.length)} Zeichen</span></div><pre class="raw box">${esc(rec.prompt)}</pre>`;
   } else if (tab === 'kontext') {
     const parts = [{ name: rec.prompt_datei, quelle: rec.prompt_datei, text: rec.prompt, color: 'var(--c1)' }, ...rec.kontext.map((c, i) => ({ ...c, color: COLORS[i % COLORS.length] }))];
     const total = parts.reduce((n, p) => n + p.text.length, 0);
-    left.innerHTML = `<p class="note">Eine einzige Nachricht: Prompt-Datei plus diese Dateien, jeweils mit <code>--- name ---</code> davor. Mehr weiß das Modell nicht.</p>
-      <div class="filehead"><span><b>${kb(total)} Zeichen</b> ≈ ${kb(Math.round(total / 4))} Tokens</span><span class="hint">${parts.length} Teile</span></div>
+    left.innerHTML = `<div class="filehead"><span><b>${kb(total)} Zeichen</b> ≈ ${kb(Math.round(total / 4))} Tokens</span></div>
       <div class="compose">${parts.map(p => `<span style="flex:${p.text.length};background:${p.color}" title="${esc(p.name)}"></span>`).join('')}</div>
-      <ul class="ctx">${parts.map(p => `<li><details><summary><span class="dot" style="background:${p.color}"></span><code>${esc(p.name)}</code><span class="sz">${kb(p.text.length)} Z. · ${esc(p.quelle)}</span></summary><pre>${esc(p.text)}</pre></details></li>`).join('')}</ul>`;
+      <ul class="ctx">${parts.map(p => `<li><details><summary><span class="dot" style="background:${p.color}"></span><code>${esc(p.name)}</code><span class="sz" title="${esc(p.quelle)}">${kb(p.text.length)} Zeichen</span></summary><pre>${esc(p.text)}</pre></details></li>`).join('')}</ul>`;
   } else if (tab === 'aufruf') {
     const a = rec.anfrage, parts = [rec.prompt_datei, ...rec.kontext.map(c => c.name)];
-    const d0 = rec.dauer != null ? ` · ${String(rec.dauer).replace('.', ',')} s` : '';
-    const kosten = rec.kosten_usd != null ? ` · ${rec.kosten_usd.toFixed(3).replace('.', ',')} USD` : '';
-    if (a.befehl) {
-      left.innerHTML = (rec.simuliert ? `<p class="note warn">Demo: Claude Code wurde nicht gestartet. Eine vorbereitete Antwort aus <code>orchestrator/demo/</code> kommt zurück.</p>` : '') +
-        `<p class="note">Kein HTTP-Aufruf, sondern ein Prozess: Der Orchestrator startet Claude Code. Die Nachricht geht über stdin.</p>
-        <pre class="raw box">$ ${esc(a.befehl.join(' '))} &lt; ‹${esc(parts.join(' + '))}›</pre>` +
-        (a.werkzeuge.length ? `<p class="note" style="margin-top:14px">Erlaubte Werkzeuge. Alles andere wird abgelehnt:</p><pre class="raw box">${esc(a.werkzeuge.join('\n'))}</pre>` : `<p class="note" style="margin-top:14px">Keine Werkzeuge freigegeben: Hier urteilt Claude nur über den mitgegebenen Kontext.</p>`) +
-        `<p class="note" style="margin-top:14px">Status: <b>${LABEL[rec.status] || rec.status}</b>${d0}${kosten}${rec.fehler ? ` · ${esc(rec.fehler)}` : ''}</p>`;
-      return;
-    }
-    const body = `{\n  "model": "${a.body.model}",\n  "stream": true,\n  "messages": [{\n    "role": "user",\n    "content": "${parts.map(p => '‹' + p + '›').join(' + ')}"\n  }]\n}`;
-    const d = rec.dauer != null ? ` · ${String(rec.dauer).replace('.', ',')} s` : '';
-    left.innerHTML = (rec.simuliert ? `<p class="note warn">Demo: Diese Anfrage wurde nicht gesendet. Eine vorbereitete Antwort aus <code>orchestrator/demo/</code> kommt zurück. Alles danach läuft echt.</p>` : '') +
-      `<p class="note">Gestartet vom Orchestrator, der selbst so gestartet wurde:</p><pre class="raw box">$ ${esc(D.start.befehl || '')}</pre>
-      <p class="note" style="margin-top:14px">Der Modell-Aufruf als HTTP-Anfrage:</p>
-      <pre class="raw box">POST ${esc(a.url)}\nAuthorization: Bearer $${esc(a.key)}\nContent-Type: application/json\n\n${esc(body)}</pre>
-      <p class="note" style="margin-top:14px">Status: <b>${LABEL[rec.status] || rec.status}</b>${d}${rec.antwort_zeichen ? ` · Antwort ${kb(rec.antwort_zeichen)} Zeichen` : ''}${rec.fehler ? ` · ${esc(rec.fehler)}` : ''}</p>`;
+    const fakten = [['Anbieter', rec.anbieter], ['Modell', rec.modell],
+      ['Art', a.befehl ? (a.werkzeuge.length ? 'Agent mit Werkzeugen' : 'Claude Code ohne Werkzeuge') : 'HTTP-Aufruf']];
+    if (rec.dauer != null) fakten.push(['Dauer', `${String(rec.dauer).replace('.', ',')} s`]);
+    if (rec.kosten_usd != null) fakten.push(['Kosten', `${rec.kosten_usd.toFixed(3).replace('.', ',')} USD`]);
+    fakten.push(['Tokens (geschätzt)', `≈ ${kb(tokIn(call))} rein · ${kb(tokOut(call))} raus`]);
+    if (rec.fehler) fakten.push(['Fehler', rec.fehler]);
+    const demo = rec.simuliert ? `<p class="note warn">Demo: Statt des Modells antwortet ein vorbereiteter Text. Alles danach läuft echt.</p>` : '';
+    const body = a.befehl ? '' : `{\n  "model": "${a.body.model}",\n  "stream": true,\n  "messages": [{\n    "role": "user",\n    "content": "${parts.map(p => '‹' + p + '›').join(' + ')}"\n  }]\n}`;
+    const tech = a.befehl
+      ? `<pre class="raw box">$ ${esc(a.befehl.join(' '))} &lt; ‹${esc(parts.join(' + '))}›</pre>` +
+        (a.werkzeuge.length ? `<p class="note" style="margin-top:14px">Erlaubte Werkzeuge, alles andere wird abgelehnt:</p><pre class="raw box">${esc(a.werkzeuge.join('\n'))}</pre>` : '')
+      : `<pre class="raw box">POST ${esc(a.url)}\nAuthorization: Bearer $${esc(a.key)}\nContent-Type: application/json\n\n${esc(body)}</pre>`;
+    left.innerHTML = demo + `<dl class="fakten">${fakten.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl><details class="tech"><summary>Technischen Aufruf zeigen</summary>${tech}</details>`;
   }
 }
 let outKey = '';
@@ -550,7 +615,6 @@ function renderLog() {
   const ev = D.events.filter(e => teil === 2 || e.status !== 'kante');
   const key = teil + '|' + ev.length;
   if (key === logKey) return; logKey = key;
-  $('loghint').textContent = teil === 1 ? 'Agent = Sprachmodell · Harness = Code drumherum' : 'Ein Eintrag je Knoten, Kante und Harness-Schritt';
   $('log').innerHTML = ev.map(e => {
     const n = G.knoten[e.knoten];
     let who, cls = e.status === 'fail' ? 'fail' : e.warnung ? 'warn' : e.status;
@@ -564,54 +628,55 @@ function renderLog() {
 
 // ---------------------------------------------------------------- Takt
 function render() {
-  if (follow) autoSelect();
+  if (teil === 1) { selK = agent1; selA = null; }   // Teil 1 zeigt immer denselben Agenten
+  else if (follow || !selK) autoSelect();
   renderHead();
-  if (teil === 1) renderSteps(); else { renderGraph(); renderTimeline(); renderWall(); }
+  if (teil === 2) { renderKonzept(); renderGraph(); renderTimeline(); renderWall(); }
   renderPanel();
   renderLog();
 }
 async function tick() {
   try {
-    if (!G) G = await (await fetch('/api/graph')).json();
+    if (!G) {
+      G = await (await fetch('/api/graph')).json();
+      $('agent').innerHTML = Object.keys(G.knoten).filter(k => KI(G.knoten[k].art)).map(k => `<option value="${k}">${esc(G.knoten[k].titel)}</option>`).join('');
+      $('agent').value = agent1;
+    }
     const runs = await (await fetch('/api/runs')).json(), sel = $('run');
     if (sel.options.length !== runs.length) {
       sel.innerHTML = runs.map(r => `<option>${esc(r)}</option>`).join('');
       if (!current || follow) switchRun(runs[0]);
       sel.value = current;
     }
-    if (!current) { $('startline').innerHTML = '<span class="empty">Noch kein Lauf. Starte in VS Code den Task „2 Demo ohne API-Keys“.</span>'; return; }
+    if (!current) { $('zustand').innerHTML = '<span class="empty">Noch kein Lauf. Starte in VS Code den Task „2 Demo ohne API-Keys“.</span>'; return; }
     D = await (await fetch('/api/run/' + current)).json();
     D.start = D.start || {};
     render();
   } catch (e) {
     console.error(e);
-    $('startline').innerHTML = '<span class="empty">Keine Verbindung. Läuft der Task „1 Dashboard starten“?</span>';
+    $('zustand').innerHTML = '<span class="empty">Keine Verbindung. Läuft der Task „1 Dashboard starten“?</span>';
+    $('zustand')._html = null;
   }
 }
 function switchRun(id) { current = id; selK = null; selA = null; panelKey = outKey = logKey = ''; $('wall').dataset.key = ''; }
-function setTeil(n) { teil = n; history.replaceState(null, '', n === 2 ? '#teil2' : '#teil1'); panelKey = logKey = ''; if (D) render(); }
-function pick(k, a) { follow = false; selK = k; selA = a || null; if (D) render(); }
+function setTeil(n) { teil = n; ansicht = 'graph'; erklaert = null; history.replaceState(null, '', n === 2 ? '#teil2' : '#teil1'); panelKey = logKey = ''; if (D) render(); }
+function pick(k, a) { follow = false; selK = k; selA = a || null; if (teil === 2) ansicht = 'knoten'; if (D) render(); }
+function toggleErkl(id) { erklaert = erklaert === id ? null : id; if (D) render(); }
+function setTab(t) { tab = t; erklaert = null; if (D) render(); }
 
 $('t1').onclick = () => setTeil(1);
 $('t2').onclick = () => setTeil(2);
 $('follow').onclick = () => { follow = !follow; if (follow) selA = null; if (D) render(); };
 $('run').onchange = e => { switchRun(e.target.value); follow = false; tick(); };
-$('tabs').onclick = e => { if (e.target.dataset.t) { tab = e.target.dataset.t; if (D) render(); } };
+$('tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) setTab(b.dataset.t); };
+$('erkl').onclick = $('konzept').onclick = e => { const b = e.target.closest('[data-erkl]'); if (b) toggleErkl(b.dataset.erkl); };
+$('ansicht').onclick = e => { if (e.target.dataset.a) { ansicht = e.target.dataset.a; if (D) render(); } };
+$('agent').onchange = e => { agent1 = e.target.value; panelKey = outKey = ''; if (D) render(); };
+$('mehr').onclick = () => { const zu = $('laufbox').hidden; $('laufbox').hidden = !zu; $('mehr').setAttribute('aria-expanded', zu); };
 $('rounds').onclick = e => { if (e.target.dataset.a) pick(selK, e.target.dataset.a); };
-$('steps').onclick = e => {
-  const b = e.target.closest('.step'); if (!b || !D) return;
-  const ks = phaseNodes(b.dataset.p);
-  const hit = D.events.filter(x => ks.includes(x.knoten) && LABEL[x.status]).pop();
-  pick(hit ? hit.knoten : ks[0]);
-};
 $('graph').onclick = e => { const g = e.target.closest('.node'); if (g) pick(g.dataset.k); };
 $('wall').onclick = e => { const c = e.target.closest('.card'); if (c) pick(c.dataset.k, c.dataset.a); };
 $('tl').onclick = e => { const r = e.target.closest('.tlrow'); if (r) pick(r.dataset.k, r.dataset.a || null); };
-document.addEventListener('keydown', e => {
-  if (e.target.closest('select, input, textarea')) return;
-  if (e.key === '1') setTeil(1); if (e.key === '2') setTeil(2);
-  if (e.key === 'f' || e.key === 'F') $('follow').click();
-});
 tick(); setInterval(tick, 700);
 </script>
 </body>

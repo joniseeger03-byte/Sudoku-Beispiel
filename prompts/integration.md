@@ -11,6 +11,7 @@ Sorge dafür, dass das Spiel als Ganzes funktioniert, wie es die Spezifikation u
 Regeln:
 - Ändere test_spiel.py nicht.
 - Ändere engine.py nur, wenn sie den Vertrag verletzt.
+- Liegt eine Designrichtung bei, bleibt sie erhalten. Repariere die Bedienung, ohne das Aussehen zu vereinheitlichen.
 - Führe keine git-Befehle aus, das Committen übernimmt die Harness.
 - Liegt ein Hinweis der Harness bei, behebe zuerst die dort genannten Fehler.
 

@@ -16,7 +16,7 @@ MAX_WARTEN = 30  # Sekunden: so lange warten wir bei einem Ratenlimit, bevor wir
 
 # Claude Code als Agent: darf im Arbeitsordner lesen, schreiben und Python ausführen, sonst nichts.
 WERKZEUGE = ["Read", "Edit", "Write", "Glob", "Grep", "Bash(python:*)", "PowerShell(python:*)"]
-AGENT_ZEITLIMIT = 600
+AGENT_ZEITLIMIT = 900
 API_ZEITLIMIT = 120  # Sekunden ohne neue Daten, danach wird ausgewichen
 
 
@@ -37,8 +37,10 @@ def ist_claude(cfg, anbieter):
 def claude_befehl(a, werkzeuge):
     befehl = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
               "--model", a["modell"], "--strict-mcp-config", "--setting-sources", "project"]
-    if werkzeuge:
+    if werkzeuge is True:
         befehl += ["--permission-mode", "acceptEdits", "--allowedTools", ",".join(WERKZEUGE)]
+    elif werkzeuge:  # eigene Liste, z. B. nur Websuche: ohne acceptEdits, also keine Dateiänderungen
+        befehl += ["--allowedTools", ",".join(werkzeuge)]
     return befehl
 
 
@@ -46,7 +48,7 @@ def anfrage(cfg, anbieter, nachricht, werkzeuge=False):
     """Beschreibt die Anfrage, ohne sie zu senden. Das Dashboard zeigt sie an."""
     a = cfg["anbieter"][anbieter]
     if ist_claude(cfg, anbieter):
-        return {"befehl": claude_befehl(a, werkzeuge), "werkzeuge": WERKZEUGE if werkzeuge else [], "modell": a["modell"]}
+        return {"befehl": claude_befehl(a, werkzeuge), "werkzeuge": WERKZEUGE if werkzeuge is True else (werkzeuge or []), "modell": a["modell"]}
     body = {"model": a["modell"], "stream": True, **a.get("parameter", {}),
             "messages": [{"role": "user", "content": nachricht}]}
     return {"url": a["url"].rstrip("/") + "/chat/completions", "key": a["key"], "body": body}

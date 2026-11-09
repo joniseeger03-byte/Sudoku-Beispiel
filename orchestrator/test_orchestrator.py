@@ -3,6 +3,7 @@ import json
 import os
 import pathlib
 import sys
+import tempfile
 import unittest
 import urllib.error
 from unittest.mock import patch
@@ -54,10 +55,54 @@ class HarnessTest(unittest.TestCase):
     def test_abgeschnittener_block_zaehlt_bis_zum_ende(self):
         self.assertEqual(run.codebloecke("```python\nfor x in y:\n    for"), [("python", "for x in y:\n    for")])
 
+    def test_engine_test_darf_die_oberflaeche_nicht_lesen(self):
+        self.assertTrue(run.prueft_oberflaeche('Path("index.html").read_text()'))
+        self.assertTrue(run.prueft_oberflaeche("html.count('data-index=\"0\"')"))
+        self.assertFalse(run.prueft_oberflaeche("import engine\nengine.generate('leicht')"))
+        self.assertFalse(run.prueft_oberflaeche((run.DEMO / "code" / "test_spiel.py").read_text(encoding="utf-8")))
+
     def test_urteil(self):
         self.assertEqual(run.urteil("bla\nURTEIL: ok", ["ok", "nacharbeiten"]), "ok")
         self.assertEqual(run.urteil("**URTEIL:** nacharbeiten", ["ok", "nacharbeiten"]), "nacharbeiten")
         self.assertIsNone(run.urteil("alles gut", ["ok", "nacharbeiten"]))
+
+
+class DesignTest(unittest.TestCase):
+    def test_bisherige_designs_in_zeitlicher_reihenfolge(self):
+        with tempfile.TemporaryDirectory() as t:
+            runs = pathlib.Path(t)
+            self.assertEqual(run.bisherige_designs(runs), [])
+            for lauf, name in (("2026-02", "B"), ("2026-01", "A"), ("2026-03", "C")):
+                (runs / lauf).mkdir()
+                (runs / lauf / "design.md").write_text(f"# {name}\n\nText\n", encoding="utf-8")
+            self.assertEqual(run.bisherige_designs(runs), ["A", "B", "C"])
+            self.assertEqual(run.bisherige_designs(runs, anzahl=1), ["C"])
+
+    def test_design_agent_darf_nur_suchen(self):
+        a = {"typ": "claude-code", "modell": "sonnet"}
+        befehl = agents.claude_befehl(a, graph.KNOTEN["design"]["werkzeuge"])
+        self.assertEqual(befehl[befehl.index("--allowedTools") + 1], "WebSearch,WebFetch")
+        self.assertNotIn("acceptEdits", befehl)
+
+    def test_oberflaeche_wartet_auf_das_design(self):
+        self.assertIn(("design", "ui", "", ""), graph.KANTEN)
+        self.assertNotIn(("spezifikation", "ui", "", ""), graph.KANTEN)
+        self.assertIn("design.md", graph.KNOTEN["ui"]["kontext"])
+
+    def test_design_knoten_schreibt_design_md(self):
+        cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as t, patch.object(run, "RUNS", pathlib.Path(t) / "runs"), \
+                patch.object(run, "ROOT", pathlib.Path(t)), patch("run.time.sleep"):
+            (pathlib.Path(t) / "prompts").mkdir()
+            (pathlib.Path(t) / "prompts" / "design.md").write_text("Prompt", encoding="utf-8")
+            lauf = run.Lauf("test", True)
+            lauf.dir.mkdir(parents=True)
+            lauf.schreibe("03-spezifikation.md", "Spezifikation\n")
+            run.textknoten(lauf, cfg, "design", nachtrag="Bisherige Designs: X")
+            self.assertTrue((lauf.dir / "design.md").read_text(encoding="utf-8").startswith("# "))
+            rec = json.loads(next((lauf.dir / "aufrufe").glob("*-design.json")).read_text(encoding="utf-8"))
+            self.assertEqual(rec["anfrage"]["werkzeuge"], ["WebSearch", "WebFetch"])
+            self.assertIn("Bisherige Designs: X", [c["text"] for c in rec["kontext"]])
 
 
 class AgentsTest(unittest.TestCase):

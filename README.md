@@ -32,24 +32,16 @@ Vor einer Vorführung räumt **0 Alles zurücksetzen** alte Läufe und den Arbei
 
 ## Das Dashboard
 
-Oben rechts wechselst du die Ansicht (Tasten `1` und `2`):
+Das Dashboard ist für die Vorführung gebaut: Es zeigt wenig und erklärt auf Klick mehr. Bedient wird es nur per Klick. Oben rechts wechselst du die Ansicht:
 
 | Ansicht | Zeigt | Passt zu |
 |---|---|---|
-| **Teil 1 · Ein Agent** | Sieben Schritte nacheinander und *ein* Agent-Panel. Dass mehrere Modelle parallel arbeiten, bleibt verborgen. | Prompt, Kontext, Harness |
-| **Teil 2 · Graph** | Den Ablauf als Graph mit parallelen Knoten, bedingten Kanten und Schleifen (mit Anzahl), eine Zeitleiste (wer lief wann, was lief gleichzeitig, wo ist der kritische Pfad) und ein Live-Fenster je gleichzeitig arbeitendem Agenten. Ein orangefarbenes ! markiert Knoten, bei denen die Harness eingegriffen hat. | Loop, Graph |
+| **Teil 1 · Ein Agent** | Einen festen Agenten (die Engine) als Kette: Prompt + Kontext → Modell → Antwort → Harness. Ein Klick zeigt genau diesen Baustein. | Prompt, Kontext, Harness |
+| **Teil 2 · Loop und Graph** | Nur den Ablauf als Graph. Ein Klick auf einen Knoten, **Zeitleiste** oder **Live** (solange ein Agent arbeitet) ersetzt ihn, **← Graph** führt zurück. Ein orangefarbenes ! markiert Knoten, bei denen die Harness eingegriffen hat. | Loop, Graph |
 
-Oben steht außerdem eine grobe Token-Schätzung für den ganzen Lauf (4 Zeichen ≈ 1 Token), im Panel die Schätzung je Aufruf.
-
-Das Panel hat in beiden Ansichten dieselben Reiter:
-
-- **Prompt:** die Datei aus `prompts/`, genau so, wie sie an das Modell ging.
-- **Kontext:** welche Dateien angehängt wurden, wie groß sie sind und wie sich die Nachricht zusammensetzt.
-- **Aufruf:** der Startbefehl und die HTTP-Anfrage an den Anbieter (ohne Key).
-- **Harness:** was normaler Code danach getan hat: Codeblock übernehmen, Syntax prüfen, committen, mergen, Tests ausführen, Urteil lesen.
-- **Ausgabe:** die Antwort, live gestreamt.
-
-**Live folgen** (Taste `F`) springt automatisch zum aktiven Agenten. Ein Klick auf einen Schritt oder Knoten hält die Auswahl fest.
+- Der **Info-Kreis** klappt Details und Erklärung auf.
+- **Lauf ▾** enthält Laufauswahl, den Agenten für Teil 1, **Live folgen**, Startbefehl und Protokoll.
+- Technische Befehle stehen zugeklappt bei den Bausteinen Modell und Harness.
 
 ## Schritt 2: Echter Lauf
 
@@ -59,14 +51,16 @@ Das Panel hat in beiden Ansichten dieselben Reiter:
 4. **2b Verbindung testen**. Jeder Anbieter muss `OK` melden. Das kostet nur wenige Tokens.
 5. **3 Echten Lauf starten**. Ctrl+C im Terminal bricht ab.
 
-Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall ein. Nur `integration` braucht Claude Code, weil dieser Agent selbst Dateien ändert.
+Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall ein. Nur `integration` braucht Claude Code, weil dieser Agent selbst Dateien ändert. Ohne Claude Code wählt `design` außerdem ohne Websuche aus dem Modellwissen.
 
 ### Wer macht was
 
 | Rollen | Ausführung | Warum |
 |---|---|---|
-| Recherche, Prüfung, Spezifikation, Engine, Oberfläche, Tests | Sprachmodell über HTTP (Groq, OpenRouter) | Ein Aufruf, eine Antwort. Die Harness schreibt das Ergebnis in Dateien. |
+| Recherche, Prüfung, Spezifikation, Tests | Sprachmodell über HTTP (Groq, OpenRouter) | Ein Aufruf, eine Antwort. Die Harness schreibt das Ergebnis in Dateien. |
+| Engine, Oberfläche | Claude Code ohne Werkzeuge | Der Code muss von Hand spielbar sein. Die Harness übernimmt die Codeblöcke. |
 | Testcheck | Claude Code ohne Werkzeuge | Urteilt nur über den mitgegebenen Kontext. |
+| Design | Claude Code nur mit `WebSearch` und `WebFetch` | Sucht selbst nach Gestaltungsoptionen und entscheidet sich für eine, ändert aber keine Dateien. |
 | Korrektur, Integration | Claude Code mit Werkzeugen | Arbeitet selbst im Worktree: liest, ändert und führt Python aus. Erlaubt sind nur die Werkzeuge in `WERKZEUGE` in `orchestrator/agents.py`. |
 
 Modelle ohne Werkzeuge korrigieren blind. In echten Läufen pendelten sie zwischen Fehlern, weil sie ihren Code nie ausführen konnten.
@@ -81,13 +75,15 @@ Modelle ohne Werkzeuge korrigieren blind. In echten Läufen pendelten sie zwisch
 | `orchestrator/graph.py` | Der Ablauf als Daten: Knoten mit Prompt, Kontext und Ausgabe, Kanten und Schleifen |
 | `orchestrator/run.py` | Führt den Graphen aus: Modell-Aufrufe, Harness, Schleifen |
 | `orchestrator/agents.py` | HTTP-Aufruf an OpenAI-kompatible Schnittstellen und Start von Claude Code |
-| `orchestrator/ui_check.py` | Bedient die Oberfläche im Headless-Browser: Ziffern setzen, löschen, Konflikte |
+| `orchestrator/ui_check.py` | Spielt die Oberfläche im Headless-Browser bis zum Sieg |
 | `orchestrator/dashboard.py` / `.html` | Zeigt die Läufe an, liest nur `runs/` |
 | `runs/<lauf>/` | `start.json`, `events.jsonl`, `aufrufe/` (Prompt und Kontext je Aufruf), `live/`, Markdown-Ergebnisse |
 | `arbeitsbereich/` | Zielprojekt und Git-Worktrees je Agent |
 
 ## Gut zu wissen
 
+- **Design:** Der Design-Agent sucht im Web nach Optionen, vergleicht sie und entscheidet sich für eine (`prompts/design.md`). Die Namen der letzten acht Designs bekommt er als Hinweis, damit er etwas anderes wählt. Das Ergebnis samt Quellen steht in `runs/<lauf>/design.md` und geht als Kontext an Oberfläche und Integration. In der Demo antwortet ein vorbereiteter Text.
+- **Abnahme:** `orchestrator/ui_check.py` spielt das Rätsel im Headless-Browser bis zum Sieg: sichtbare Auswahl, Setzen und Löschen auf allen Wegen, Stufenwahl, Blöcke, Konflikte.
 - **Kosten:** Ein echter Lauf verbraucht Guthaben bei jedem Anbieter. Setze dort ein Limit.
 - **Daten:** Auftrag und Zwischenergebnisse gehen an die Anbieter. Keine Passwörter oder vertraulichen Daten eintragen.
 - **Keys:** `.env` steht in `.gitignore`. Lade diese Datei nie hoch.
@@ -96,5 +92,5 @@ Modelle ohne Werkzeuge korrigieren blind. In echten Läufen pendelten sie zwisch
 - **Modell-Parameter:** Unter `anbieter.<name>.parameter` in `config.json` gehen zusätzliche Felder in jede Anfrage, z. B. `reasoning_effort` und `max_completion_tokens` für Reasoning-Modelle.
 - **Rechte:** Test-Gate, Abnahme und Dashboard führen den erzeugten Python-Code aus, Claude Code darf in den Worktrees Dateien ändern und Python ausführen. Das ist kein Sandbox-Schutz, nutze es nur für Aufträge, denen du vertraust.
 - **Kein Sicherheitsnetz:** Scheitern die Modelle, scheitert der Lauf sichtbar. Es gibt keinen versteckten Ersatzcode.
-- **Recherche:** Die Modelle antworten ohne Websuche aus ihrem Wissen. Quellen können falsch sein.
+- **Recherche:** Die Recherche-Modelle antworten ohne Websuche aus ihrem Wissen. Quellen können falsch sein.
 - **Port belegt?** Ändere `PORT` in `orchestrator/dashboard.py`.

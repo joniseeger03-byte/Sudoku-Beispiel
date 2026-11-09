@@ -52,6 +52,13 @@ KNOTEN = {
         "kontext": ["00-auftrag.md", "01a-generator.md", "01b-spielablauf.md", "02-pruefung.md"],
         "ausgabe": ["03-spezifikation.md"],
     },
+    "design": {
+        "titel": "Design", "phase": "spezifikation", "art": "agent", "pos": (3, 2),
+        "prompt": "design.md",
+        "kontext": ["03-spezifikation.md"],
+        "ausgabe": ["design.md"],
+        "werkzeuge": ["WebSearch", "WebFetch"],  # darf nur suchen, nichts im Projekt ändern
+    },
     "engine": {
         "titel": "Engine", "phase": "umsetzung", "art": "modell", "pos": (4, 0),
         "prompt": "engine.md",
@@ -61,7 +68,7 @@ KNOTEN = {
     "ui": {
         "titel": "Oberfläche", "phase": "umsetzung", "art": "modell", "pos": (4, 1),
         "prompt": "ui.md",
-        "kontext": ["03-spezifikation.md"],
+        "kontext": ["03-spezifikation.md", "design.md"],
         "ausgabe": ["index.html", "board.js", "style.css"],
     },
     "tests": {
@@ -90,7 +97,7 @@ KNOTEN = {
     "integration": {
         "titel": "Integration", "phase": "ergebnis", "art": "agent", "pos": (7, 1),
         "prompt": "integration.md",
-        "kontext": ["03-spezifikation.md"],
+        "kontext": ["03-spezifikation.md", "design.md"],
         "ausgabe": ["07-integration-runde-{runde}.md"],
     },
     "abnahme": {
@@ -115,7 +122,8 @@ KANTEN = [
     ("pruefung", "recherche_a", "schleife", "nacharbeiten"),
     ("pruefung", "recherche_b", "schleife", "nacharbeiten"),
     ("spezifikation", "engine", "", ""),
-    ("spezifikation", "ui", "", ""),
+    ("spezifikation", "design", "", ""),
+    ("design", "ui", "", ""),
     ("spezifikation", "tests", "", ""),
     ("engine", "gate", "", ""),
     ("ui", "gate", "", ""),
@@ -124,9 +132,9 @@ KANTEN = [
     ("gate", "testcheck", "bedingt", "nicht bestanden"),
     ("testcheck", "korrektur", "bedingt", "URTEIL: engine"),
     ("testcheck", "tests", "schleife", "URTEIL: test"),
-    ("korrektur", "gate", "schleife", "neue engine.py"),
+    ("korrektur", "gate", "schleife", "neu"),
     ("integration", "abnahme", "", ""),
-    ("abnahme", "freigabe", "bedingt", "bestanden"),
+    ("abnahme", "freigabe", "bedingt", "ok"),
     ("abnahme", "integration", "schleife", "nicht bestanden"),
 ]
 

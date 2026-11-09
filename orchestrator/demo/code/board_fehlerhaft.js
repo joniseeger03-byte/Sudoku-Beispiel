@@ -16,7 +16,9 @@ for (let d = 0; d <= 9; d++) {
 function put(d) {
   if (grid[sel] === undefined) grid[sel] = d;
   draw();
-  status.textContent = grid.join() === game.solution.join() ? 'Gelöst!' : '';
+  const fertig = grid.join() === game.solution.join();
+  status.textContent = fertig ? 'Gelöst!' : '';
+  document.body.classList.toggle('geloest', fertig);
 }
 function conflicts(g) {
   const bad = new Set();
@@ -33,9 +35,10 @@ function draw() {
     b.className = [game.puzzle[i] ? 'given' : '', i === sel ? 'sel' : '', bad.has(i) ? 'konflikt' : ''].join(' ');
   });
 }
-async function start() {
+async function start(stufe) {
   status.textContent = 'Python erzeugt ein Rätsel …';
-  const r = await fetch('api/neu?stufe=' + document.getElementById('level').value);
+  document.body.classList.remove('geloest');
+  const r = await fetch('api/neu?stufe=' + stufe);
   game = await r.json();
   grid = game.puzzle.slice();
   sel = grid.indexOf(0);
@@ -48,5 +51,5 @@ document.addEventListener('keydown', e => {
   const m = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[e.key];
   if (m) { e.preventDefault(); sel = (sel + m + 81) % 81; draw(); }
 });
-document.getElementById('new').onclick = start;
-start();
+document.querySelectorAll('[data-stufe]').forEach(b => { b.onclick = () => start(b.dataset.stufe); });
+start('mittel');

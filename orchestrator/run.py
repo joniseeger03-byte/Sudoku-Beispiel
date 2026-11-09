@@ -148,6 +148,7 @@ class Lauf:
 
         anbieter = cfg["rollen"][knoten]
         modell = cfg["anbieter"][anbieter]["modell"]
+        werkzeuge = k.get("werkzeuge", k["art"] == "agent")
         with self.lock:
             self.zaehler += 1
             aid = f"{self.zaehler:02d}-{knoten}"
@@ -155,7 +156,7 @@ class Lauf:
             "id": aid, "knoten": knoten, "runde": runde, "status": "run", "start": time.time(),
             "anbieter": anbieter, "modell": modell, "simuliert": self.demo,
             "prompt_datei": prompt_datei, "prompt": prompt_text, "kontext": kontext,
-            "anfrage": agents.anfrage(cfg, anbieter, nachricht, werkzeuge=k["art"] == "agent"),
+            "anfrage": agents.anfrage(cfg, anbieter, nachricht, werkzeuge=werkzeuge),
         }
         self._speichere(rec)
         self.event(knoten, "run", f"Modell-Aufruf, Runde {runde}" if runde > 1 else "Modell-Aufruf",
@@ -165,7 +166,7 @@ class Lauf:
             if self.demo:
                 text = demo_antwort(knoten, runde, out)
             elif agents.ist_claude(cfg, anbieter):
-                text, rec["kosten_usd"] = agents.claude_call(cfg, anbieter, nachricht, out, cwd or self.dir, k["art"] == "agent")
+                text, rec["kosten_usd"] = agents.claude_call(cfg, anbieter, nachricht, out, cwd or self.dir, werkzeuge)
             else:
                 def wechsel(von, nach, grund):
                     self.harness(knoten, f"Anbieter gewechselt: {von} → {nach} ({grund.strip()[:120]})", warnung=True)
@@ -261,13 +262,28 @@ def worktree(lauf, name):
     return pfad
 
 
-def textknoten(lauf, cfg, knoten, runde=1):
+def bisherige_designs(runs=RUNS, anzahl=8):
+    """Die Namen der letzten Designs, damit der Design-Agent etwas anderes wählt."""
+    namen = []
+    for datei in sorted(runs.glob("*/design.md"))[-anzahl:]:
+        zeilen = datei.read_text(encoding="utf-8", errors="replace").splitlines()
+        if zeilen:
+            namen.append(zeilen[0].lstrip("# ").strip())
+    return namen
+
+
+def textknoten(lauf, cfg, knoten, runde=1, nachtrag=None):
     """Ein Modell-Aufruf, dessen Antwort als Markdown-Datei gespeichert wird."""
-    text, aid = lauf.frage(cfg, knoten, runde)
+    text, aid = lauf.frage(cfg, knoten, runde, nachtrag=nachtrag)
     datei = KNOTEN[knoten]["ausgabe"][0].format(runde=runde)
     lauf.schreibe(datei, text)
     lauf.event(knoten, "ok", f"{datei} geschrieben", datei=datei, aufruf=aid)
     return text
+
+
+def prueft_oberflaeche(code):
+    """test_spiel.py prüft nur die Engine. Die Oberfläche entsteht erst im Browser, dafür gibt es ui_check.py."""
+    return bool(re.search(r"index\.html|board\.js|style\.css|data-(?:index|digit|stufe)", code))
 
 
 def codeknoten(lauf, cfg, knoten, pfad, runde=1, suche=(), pflicht=None):
@@ -276,6 +292,9 @@ def codeknoten(lauf, cfg, knoten, pfad, runde=1, suche=(), pflicht=None):
     dateien = KNOTEN[knoten]["ausgabe"]
     text, aid = lauf.frage(cfg, knoten, runde, suche)
     probleme = lauf.uebernimm(knoten, text, pfad, dateien, pflicht or dateien)
+    if knoten == "tests" and (pfad / "test_spiel.py").exists() and prueft_oberflaeche((pfad / "test_spiel.py").read_text(encoding="utf-8")):
+        probleme.append("test_spiel.py greift auf die Oberfläche zu. Teste nur engine.py, lies keine HTML-, JS- oder CSS-Dateien.")
+        lauf.harness(knoten, "test_spiel.py prüft die Oberfläche statt nur die Engine", warnung=True)
     if probleme:
         lauf.harness(knoten, "Antwort unbrauchbar, frage einmal mit Hinweis nach", warnung=True)
         hinweis = ("Deine vorige Antwort war nicht verwendbar:\n- " + "\n- ".join(probleme) +
@@ -421,6 +440,12 @@ def ablauf(lauf, cfg):
 
     # Spezifikation
     textknoten(lauf, cfg, "spezifikation")
+
+    # Design: Der Agent sucht selbst nach Optionen und entscheidet sich für eine
+    bisher = bisherige_designs()
+    if bisher:
+        lauf.harness("design", f"{len(bisher)} bisherige Designs als Hinweis mitgegeben")
+    textknoten(lauf, cfg, "design", nachtrag="Bisherige Designs: " + ", ".join(bisher) if bisher else None)
 
     # Umsetzung: drei Agenten parallel, jeder in seinem eigenen Git-Worktree
     paths = {}
