@@ -76,6 +76,18 @@
       "problemMatcher": []
     },
     {
+      "label": "4b Lauf verwerfen",
+      "type": "shell",
+      "command": "python3 orchestrator/run.py --verwerfen",
+      "windows": {
+        "command": "python orchestrator/run.py --verwerfen"
+      },
+      "presentation": {
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "5 Orchestrator-Tests",
       "type": "shell",
       "command": "python3 -m unittest -v orchestrator.test_orchestrator orchestrator.test_anbieter",

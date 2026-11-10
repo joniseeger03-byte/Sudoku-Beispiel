@@ -256,9 +256,15 @@ def init_target():
         git("commit", "-m", "Start")
 
 
+def basis():
+    """Der leere Anfangsstand (Commit „Start“). Jeder Lauf baut das ganze Projekt neu und beginnt deshalb hier,
+    nicht beim zuletzt freigegebenen main. Sonst lägen alte Dateien im Worktree und brächten Tests und Merges durcheinander."""
+    return git("rev-list", "--max-parents=0", "main").stdout.split()[0]
+
+
 def worktree(lauf, name):
     pfad = lauf.wt / name
-    git("worktree", "add", str(pfad), "-b", f"agent/{lauf.id}/{name}", "main")
+    git("worktree", "add", str(pfad), "-b", f"agent/{lauf.id}/{name}", basis())
     return pfad
 
 
@@ -328,7 +334,7 @@ def korrektur(lauf, cfg, engine, integ, runde):
 def gate(lauf, integ, runde, zeitlimit):
     """Test-Gate: kein Modell. Branches zusammenführen und python test_spiel.py ausführen."""
     lauf.event("gate", "run", f"Test-Gate, Runde {runde}", runde=runde)
-    git("reset", "--hard", "main", cwd=integ)
+    git("reset", "--hard", basis(), cwd=integ)
     for n in ("engine", "ui", "tests"):
         r = git("merge", "--no-ff", "-m", f"Merge {n}", f"agent/{lauf.id}/{n}", cwd=integ, check=False)
         if r.returncode != 0:
@@ -369,8 +375,8 @@ def ausfuehren(befehl, cwd, zeitlimit):
 
 
 def abnahme(lauf, integ, runde, zeitlimit):
-    """Abnahme: kein Modell. Engine-Tests noch einmal, dann die Oberfläche im Headless-Browser bedienen."""
-    lauf.event("abnahme", "run", f"Abnahme, Runde {runde}", runde=runde)
+    """Abnahmetest: kein Modell. Engine-Tests noch einmal, dann die Oberfläche im Headless-Browser bedienen."""
+    lauf.event("abnahme", "run", f"Abnahmetest, Runde {runde}", runde=runde)
     lauf.harness("abnahme", "Engine-Tests", befehl="python -u test_spiel.py")
     code_t, out_t = ausfuehren([sys.executable, "-u", "test_spiel.py"], integ, zeitlimit)
     lauf.harness("abnahme", f"Engine-Tests: Exit-Code {code_t}", warnung=True if code_t != 0 else None)
@@ -382,7 +388,7 @@ def abnahme(lauf, integ, runde, zeitlimit):
         lauf.harness("abnahme", f"Oberflächen-Test: Exit-Code {code_u}", warnung=True if code_u != 0 else None)
     ok = code_t == 0 and code_u in (0, 3)
     name = KNOTEN["abnahme"]["ausgabe"][0].format(runde=runde)
-    bericht = (f"# Abnahme, Runde {runde}: {'bestanden' if ok else 'nicht bestanden'}\n\n"
+    bericht = (f"# Abnahmetest, Runde {runde}: {'bestanden' if ok else 'nicht bestanden'}\n\n"
                f"**Prüfer:** Skripte, kein Sprachmodell.\n\n## Engine-Tests (Exit-Code {code_t})\n\n```text\n{out_t[-2000:]}\n```\n\n"
                f"## Oberfläche (Exit-Code {code_u})\n\n```text\n{out_u[-2000:]}\n```\n")
     lauf.schreibe(name, bericht)
@@ -504,7 +510,7 @@ def ablauf(lauf, cfg):
             korrektur(lauf, cfg, paths["engine"], integ, runde)
             lauf.kante("korrektur", "gate", f"neue engine.py, Runde {runde + 1}")
 
-    # Schleife 3: Integrations-Agent → Abnahme, bis Engine und Oberfläche zusammen funktionieren
+    # Schleife 3: Integrations-Agent → Abnahmetest, bis Engine und Oberfläche zusammen funktionieren
     bericht = None
     for runde in range(1, max_runden + 1):
         text, aid = lauf.frage(cfg, "integration", runde, nachtrag=bericht, cwd=integ)
@@ -524,7 +530,7 @@ def ablauf(lauf, cfg):
             lauf.kante("abnahme", "freigabe", "bestanden")
             break
         if runde == max_runden:
-            raise RuntimeError(f"Abnahme nach {max_runden} Runden nicht bestanden")
+            raise RuntimeError(f"Abnahmetest nach {max_runden} Runden nicht bestanden")
         lauf.kante("abnahme", "integration", f"nicht bestanden, Runde {runde + 1}")
 
     ergebnis = lauf.dir / "ergebnis"
@@ -555,15 +561,22 @@ def check():
     sys.exit(1 if failed else 0)
 
 
+def letztes_event(d):
+    log = d / "events.jsonl"
+    zeilen = [z for z in log.read_text(encoding="utf-8").splitlines() if z.strip()] if log.exists() else []
+    return json.loads(zeilen[-1]) if zeilen else {}
+
+
 def wartend():
-    out = []
-    for d in sorted(p for p in RUNS.iterdir() if p.is_dir()):
-        log = d / "events.jsonl"
-        if log.exists() and log.read_text(encoding="utf-8").strip():
-            last = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])
-            if last.get("knoten") == "freigabe" and last.get("status") == "run":
-                out.append(d.name)
-    return out
+    """Läufe, die fertig sind und auf Freigabe oder Verwerfen warten."""
+    return [d.name for d in sorted(p for p in RUNS.iterdir() if p.is_dir())
+            if letztes_event(d).get("knoten") == "freigabe" and letztes_event(d).get("status") == "run"]
+
+
+def ohne_entscheidung():
+    """Wartende und abgebrochene Läufe: Deren Entwurf darf verworfen werden."""
+    return [d.name for d in sorted(p for p in RUNS.iterdir() if p.is_dir())
+            if d.name in wartend() or letztes_event(d).get("knoten") == "orchestrator"]
 
 
 def approve(lauf_id):
@@ -574,8 +587,25 @@ def approve(lauf_id):
     if lauf_id not in offen:
         sys.exit(f"Lauf {lauf_id} wartet nicht auf Freigabe. Wartend: {', '.join(offen)}")
     lauf = Lauf(lauf_id, False)
-    git("merge", "--no-ff", "-m", f"Lauf {lauf.id} freigegeben", f"agent/{lauf.id}/integration")
-    lauf.harness("freigabe", "integration nach main gemergt", befehl=f"git merge --no-ff agent/{lauf.id}/integration")
+    zweig = f"agent/{lauf.id}/integration"
+    if git("rev-parse", "--verify", "--quiet", zweig, check=False).returncode != 0:
+        sys.exit(f"Branch {zweig} fehlt, der Entwurf wurde wohl schon gelöscht.")
+    # Eigene Änderungen im Zielprojekt nie überschreiben
+    offen_geaendert = git("status", "--porcelain", check=False).stdout.strip()
+    if offen_geaendert:
+        sys.exit(f"In {TARGET} gibt es Änderungen, die nicht committet sind. Erst committen oder zurücksetzen:\n{offen_geaendert[:600]}")
+    # Jeder Lauf baut das ganze Projekt neu. Ein normaler Merge kollidiert deshalb mit jeder früheren Freigabe.
+    # Die Freigabe übernimmt den Stand des Laufs als neuen main, als Merge-Commit, damit die Historie beider Seiten bleibt.
+    try:
+        git("merge", "--no-ff", "--no-commit", "-s", "ours", zweig)
+        git("read-tree", "--reset", "-u", zweig)
+        git("commit", "--no-verify", "-m", f"Lauf {lauf.id} freigegeben")
+    except RuntimeError as e:
+        git("merge", "--abort", check=False)
+        git("reset", "--hard", "HEAD", check=False)
+        sys.exit(f"Übernahme nach main nicht möglich, nichts geändert:\n{e}")
+    lauf.harness("freigabe", "Stand des Laufs als neuer main übernommen",
+                 befehl=f"git merge -s ours --no-commit {zweig} && git read-tree --reset -u {zweig} && git commit")
     for n in ("engine", "ui", "tests", "integration"):
         git("worktree", "remove", "--force", str(lauf.wt / n), check=False)
     lauf.schreibe("09-freigabe.md", "# Freigabe\n\nDer Merge in `main` ist erfolgt.\n")
@@ -586,14 +616,43 @@ def approve(lauf_id):
         print(f"Weitere wartende Läufe: {', '.join(rest)}")
 
 
+def schreibbar(fn, pfad, _):
+    """Git legt schreibgeschützte Dateien an, die Windows sonst nicht löscht."""
+    os.chmod(pfad, stat.S_IWRITE)
+    fn(pfad)
+
+
+def verwerfen(lauf_id):
+    """Gegenstück zur Freigabe: löscht den Entwurf (Worktrees, Branches, Ergebnis). Das Protokoll in runs/ bleibt.
+    Geht für wartende und für abgebrochene Läufe."""
+    offen = ohne_entscheidung()
+    if not offen:
+        sys.exit("Kein Lauf wartet auf eine Entscheidung.")
+    lauf_id = lauf_id or offen[-1]
+    if lauf_id not in offen:
+        sys.exit(f"Lauf {lauf_id} wartet nicht auf eine Entscheidung. Offen: {', '.join(offen)}")
+    lauf = Lauf(lauf_id, False)
+    if lauf.wt.exists():
+        for wt in sorted(p for p in lauf.wt.iterdir() if p.is_dir()):
+            git("worktree", "remove", "--force", str(wt), check=False)
+        shutil.rmtree(lauf.wt, onerror=schreibbar)
+    git("worktree", "prune", check=False)
+    zweige = git("branch", "--list", f"agent/{lauf.id}/*", "--format=%(refname:short)", check=False).stdout.split()
+    if zweige:
+        git("branch", "-D", *zweige)
+    if (lauf.dir / "ergebnis").exists():
+        shutil.rmtree(lauf.dir / "ergebnis", onerror=schreibbar)
+    lauf.harness("freigabe", f"Entwurf gelöscht: {len(zweige)} Branches, Worktrees und Ergebnis",
+                 befehl=f"git worktree remove --force … && git branch -D agent/{lauf.id}/*")
+    lauf.schreibe("09-freigabe.md", "# Verworfen\n\nDer Entwurf wurde gelöscht. Nichts wurde nach `main` übernommen.\n")
+    lauf.event("freigabe", "fail", "Verworfen, nichts nach main übernommen", datei="09-freigabe.md")
+    print(f"Lauf {lauf.id} verworfen.")
+
+
 def zuruecksetzen():
     print(f"Löscht alle Läufe in {RUNS} und den Arbeitsbereich {WORK} (inklusive Git-Branches dort).")
     if input("Wirklich? Tippe ja: ").strip().lower() != "ja":
         sys.exit("Abgebrochen.")
-
-    def schreibbar(fn, pfad, _):
-        os.chmod(pfad, stat.S_IWRITE)
-        fn(pfad)
     for d in [*(p for p in RUNS.iterdir() if p.is_dir()), WORK]:
         if d.exists():
             shutil.rmtree(d, onerror=schreibbar)
@@ -606,6 +665,7 @@ if __name__ == "__main__":
     p.add_argument("--demo", action="store_true", help="ohne API-Keys mit vorbereiteten Antworten")
     p.add_argument("--check", action="store_true", help="Keys und Modelle mit einer kurzen Anfrage testen")
     p.add_argument("--freigabe", nargs="?", const="", metavar="LAUF", help="wartenden Lauf nach main übernehmen")
+    p.add_argument("--verwerfen", nargs="?", const="", metavar="LAUF", help="wartenden Lauf verwerfen, Entwurf löschen")
     p.add_argument("--zuruecksetzen", action="store_true", help="alle Läufe und den Arbeitsbereich löschen")
     a = p.parse_args()
     RUNS.mkdir(exist_ok=True)
@@ -613,6 +673,8 @@ if __name__ == "__main__":
         check()
     elif a.freigabe is not None:
         approve(a.freigabe)
+    elif a.verwerfen is not None:
+        verwerfen(a.verwerfen)
     elif a.zuruecksetzen:
         zuruecksetzen()
     else:

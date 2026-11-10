@@ -8,11 +8,7 @@
   --bg:#F4F3F2; --panel:#FFFFFF; --ink:#2B2727; --muted:#635C5C; --line:#E1DFDD; --heavy:#797272; --accent:#23843A; --soft:#E3F4E5;
   --ok:#1F6B2B; --oksoft:#DDEEDF; --bad:#B3261E; --badsoft:#F9E1DE; --warn:#8A5300; --warnsoft:#F6ECD5; --code:#F4F3F2;
   --c1:#797272; --c2:#3CB64C; --c3:#1F6B2B; --c4:#B5AFAF; --c5:#C98A1B;
-  --brand:#3CB64C; --kopf:#797272; --kopf-text:#FFFFFF; --on-accent:#FFFFFF; }
-@media (prefers-color-scheme: dark) { :root { --bg:#1E1B1B; --panel:#2A2626; --ink:#EDEBEA; --muted:#B3ACAC; --line:#3D3838; --heavy:#B5AFAF; --accent:#5CCB6B; --soft:#1F3A23;
-  --ok:#86D18F; --oksoft:#203A25; --bad:#FF8F85; --badsoft:#4A2421; --warn:#F2BB63; --warnsoft:#463414; --code:#241F1F;
-  --c1:#B5AFAF; --c2:#4CC45C; --c3:#2E8B3C; --c4:#8E8787; --c5:#F2BB63;
-  --brand:#4CC45C; --kopf:#4A4444; --kopf-text:#FFFFFF; --on-accent:#10240F; color-scheme: dark; } }
+  --brand:#3CB64C; --kopf:#797272; --kopf-text:#FFFFFF; --on-accent:#FFFFFF; color-scheme: light; }   /* immer hell, auch bei dunklem System-Theme */
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Segoe UI", "Segoe UI Web (West European)", system-ui, sans-serif; }
 /* Kopfband wie im EXCO-SharePoint: graue Leiste mit grüner Linie */
@@ -22,7 +18,8 @@ code, pre, .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .wrap { max-width: 1560px; margin: auto; padding: 20px 16px 16px; display: grid; gap: 18px; }
 
 /* Kopf */
-.top { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; }
+.links { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
 h1 { margin: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .badge { font-size: .78rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; }
 .badge.live { background: var(--soft); color: var(--accent); }
@@ -32,7 +29,19 @@ h1 { margin: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px
 .seg button { border: 0; background: var(--panel); padding: 6px 12px; cursor: pointer; }
 .seg button.on { background: var(--accent); color: var(--on-accent); }
 select, a.btn, button.btn { background: var(--panel); border: 1.5px solid var(--heavy); border-radius: 4px; padding: 6px 10px; text-decoration: none; cursor: pointer; }
-a.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+a.btn { color: var(--ink); }
+.btn.stopp { color: var(--bad); border-color: var(--bad); font-weight: 600; }
+a.btn.primary, button.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+/* Hover: Knöpfe sollen sich wie Knöpfe anfühlen */
+select, a.btn, button.btn, .seg button { transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .08s; }
+select:hover, a.btn:hover, button.btn:hover { border-color: var(--accent); background: var(--soft); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+a.btn.primary:hover, button.btn.primary:hover { background: var(--ok); border-color: var(--ok); color: var(--on-accent); }
+.btn.stopp:hover { background: var(--badsoft); border-color: var(--bad); }
+.seg button:hover:not(.on) { background: var(--soft); color: var(--accent); }
+a.btn:active, button.btn:active, .seg button:active { transform: translateY(1px); box-shadow: none; }
+#mehr[aria-expanded="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+a.btn:focus-visible, button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { a.btn, button.btn, .seg button { transition: none; } }
 .startline { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: .9rem; color: var(--muted); }
 .cmd { background: var(--ink); color: var(--panel); padding: 4px 10px; border-radius: 4px; font-size: .85rem; }
 .cmd::before { content: "$ "; opacity: .6; }
@@ -156,15 +165,35 @@ a.btn.primary { background: var(--accent); color: var(--on-accent); border-color
 /* Vorführung: Bausteine, Erklärungen, Aufklappbares */
 .zustand { font-size: .9rem; }
 .laufbox { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; background: var(--panel); border: 1.5px solid var(--line); border-radius: 4px; padding: 10px 12px; }
-.flow { display: grid; grid-template-columns: minmax(0,2fr) auto minmax(0,2fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,2fr); gap: 8px; align-items: stretch; padding: 14px; border-bottom: 1.5px solid var(--heavy); }
-.flow .op { align-self: center; font-size: 1.6rem; color: var(--muted); padding: 0 2px; }
-.flow button { background: var(--bg); border: 2px solid var(--line); border-radius: 4px; padding: 18px 12px; text-align: center; cursor: pointer; min-width: 0; }
-.flow button:hover { border-color: var(--heavy); }
-.flow button.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.flow b { display: block; font-size: 1.7rem; line-height: 1.2; }
-.flow button.klein b { font-size: 1.1rem; }
-.flow button.leer { opacity: .5; }
-.erkl { padding: 12px 16px; border-bottom: 1px solid var(--line); }
+/* Stationen von links nach rechts: gleiche Zustandsfarben wie im Graph */
+.flow { display: flex; gap: 8px; align-items: stretch; padding: 12px; }
+.flow .op { align-self: center; font-size: 1.6rem; color: var(--line); flex: none; }
+.flow .op.on { color: var(--heavy); }
+.station { flex: 1 1 0; min-width: 0; position: relative; }
+.haupt { width: 100%; height: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; padding: 18px 16px 14px; cursor: pointer; }
+.haupt:hover { border-color: var(--heavy); }
+.haupt b { font-size: 1.3rem; line-height: 1.2; padding-right: 30px; }
+.haupt .kurz { color: var(--muted); font-size: .95rem; line-height: 1.35; }
+.haupt .stand { margin-top: auto; padding-top: 10px; font-size: .84rem; color: var(--muted); overflow-wrap: anywhere; }
+.station.s-ok .haupt { background: var(--oksoft); border-color: var(--ok); }
+.station.s-fail .haupt { background: var(--badsoft); border-color: var(--bad); }
+.station.s-run .haupt { background: var(--soft); border-color: var(--accent); animation: leuchten 1.2s ease-in-out infinite; }
+.station.s-run .stand { color: var(--accent); font-weight: 600; }
+.station.on .haupt { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.station .info { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; font-size: .95rem; }
+@keyframes leuchten { 0%, 100% { box-shadow: 0 0 3px 0 var(--accent); } 50% { box-shadow: 0 0 20px 3px var(--accent); } }
+@media (prefers-reduced-motion: reduce) { .station.s-run .haupt { animation: none; box-shadow: 0 0 0 2px var(--accent); } }
+body.teil2 .haupt { padding: 10px 12px; } body.teil2 .haupt b { font-size: 1.05rem; padding-right: 0; } body.teil2 .haupt .stand { padding-top: 2px; }
+/* Aufklappbereich: der Zeiger steht unter der gewaehlten Station oder dem gewaehlten Knoten */
+.drawer { position: relative; background: var(--panel); border: 2px solid var(--heavy); border-radius: 4px; margin-top: 10px; }
+body.teil2 .drawer { margin: 0 12px 12px; }
+#panel { position: relative; }
+.zeiger::before { content: ""; position: absolute; top: -9px; left: var(--zeiger, 50%); width: 14px; height: 14px; margin-left: -7px; transform: rotate(45deg); background: var(--panel); border-left: 2px solid var(--heavy); border-top: 2px solid var(--heavy); }
+body:not(.teil2) #panel { background: none; border: 0; }
+body:not(.teil2) .panelhead { border: 0; padding: 0 2px 10px; }
+body:not(.teil2) .flow { padding: 0; }
+body:not(.teil2) #zu { display: none; }
+.erkl { padding: 12px 16px; }
 .erkl .kern { display: flex; gap: 16px; justify-content: space-between; align-items: center; font-size: 1.25rem; }
 .info { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--heavy); background: none; color: inherit; font: italic 700 1.15rem Georgia, serif; cursor: pointer; flex: none; }
 .info.offen { background: var(--ink); color: var(--panel); font-style: normal; }
@@ -172,9 +201,8 @@ a.btn.primary { background: var(--accent); color: var(--on-accent); border-color
 .erkl ul { margin: 8px 0 0; padding-left: 20px; }
 .erkl li { margin: 4px 0; }
 .pfad { margin: 0; padding: 8px 16px 0; font-size: .82rem; color: var(--muted); }
-#panel { display: flex; flex-direction: column; height: calc(100vh - 148px); min-height: 480px; }
-body.teil2 #panel { height: calc(100vh - 238px); }
-#panel .pane { flex: 1; height: auto; min-height: 0; }
+#panel .pane { height: min(56vh, 560px); border-top: 1px solid var(--line); }
+body.teil2 #panel .pane { height: calc(100vh - 610px); min-height: 240px; }   /* Graph und Details passen zusammen auf den Schirm */
 .haken { list-style: none; margin: 0 0 14px; padding: 0; font-size: 1.1rem; }
 .haken li { padding: 6px 0; }
 .haken li::before { content: "\2713"; color: var(--ok); font-weight: 700; margin-right: 10px; }
@@ -193,35 +221,78 @@ details.mehr { background: var(--panel); border: 1.5px solid var(--line); border
 details.mehr[open] > summary { margin-bottom: 10px; }
 .konzept { border-bottom: 0; padding-left: 0; }
 .unter { margin-top: 10px; }
-@media (max-width: 860px) { .flow { grid-template-columns: minmax(0,1fr); } .flow .op { display: none; } }
+@media (max-width: 860px) { .flow { flex-direction: column; } .flow .op { display: none; } }
+/* Teil 1: Ablauf in Stufen (Variante C) */
+.stufen { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; background: var(--panel); border: 1.5px solid var(--line); border-radius: 4px; padding: 10px; }
+.stufen .stufe { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 4px; border: 1.5px solid var(--line); background: var(--bg); cursor: pointer; font-weight: 600; font-size: 1.05rem; }
+.stufen .stufe:hover { border-color: var(--heavy); }
+.stufen .auf { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px 6px 14px; border-radius: 4px; background: var(--soft); border: 1.5px solid var(--accent); }
+.stufen .auf > b { color: var(--accent); margin-right: 6px; font-size: 1.05rem; }
+.stufen .schritt { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 4px; border: 1.5px solid var(--line); background: var(--panel); cursor: pointer; font-size: .95rem; }
+.stufen .schritt:hover { border-color: var(--heavy); }
+.stufen .schritt.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.stufen .schritt.nn { opacity: .55; }
+.stufen .pfeil { align-self: center; font-size: 1.4rem; color: var(--muted); opacity: .5; }
+.st { display: inline-flex; width: 14px; justify-content: center; flex: none; font-weight: 700; }
+.st.ok::before { content: "\2713"; color: var(--ok); }
+.schritt.on .st.ok::before { color: inherit; }
+.st.fail::before { content: "\2717"; color: var(--bad); }
+.schritt.on .st.fail::before { color: inherit; }
+.st.run::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--brand); animation: punkt 1.2s ease-in-out infinite; }
+.schritt.on .st.run::before { background: var(--on-accent); }
+.st.wait::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--c4); box-sizing: border-box; }
+.versuch { font-size: .75rem; padding: 0 6px; border-radius: 3px; background: var(--warnsoft); color: var(--warn); }
+.schritt.on .versuch { background: var(--panel); }
+.stufen .nninfo { font-size: .75rem; }
+@keyframes punkt { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .st.run::before { animation: none; } }
+/* Start-Gruppe oben und Entscheidungs-Leiste für den angezeigten Lauf */
+.seg .lbl { padding: 6px 10px; font-size: .85rem; color: var(--muted); border-right: 1px solid var(--line); background: var(--bg); align-self: center; }
+.startgruppe button + button { border-left: 1px solid var(--line); }
+.startgruppe button.gesperrt { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--c4); cursor: help; }
+.entscheidung { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 4px; background: var(--warnsoft); border: 1.5px solid var(--warn); }
+.entscheidung.abgebrochen { background: var(--badsoft); border-color: var(--bad); }
+.entscheidung .aktionen { display: flex; flex-wrap: wrap; gap: 8px; }
 [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>Sudoku-Agenten</h1>
-    <div class="controls">
-      <span class="zustand" id="zustand"></span>
+    <div class="links">
+      <h1>Sudoku-Agenten</h1>
       <div class="seg" role="group" aria-label="Ansicht">
         <button id="t1">Teil 1 · Ein Agent</button>
         <button id="t2">Teil 2 · Loop und Graph</button>
       </div>
-      <a class="btn primary" id="play" hidden target="_blank" rel="noopener">Ergebnis spielen</a>
+    </div>
+    <div class="controls">
+      <span class="zustand" id="zustand"></span>
+      <span class="zustand runstate fail" id="startfehler" hidden></span>
+      <a class="btn" id="play" hidden target="_blank" rel="noopener">Ergebnis spielen</a>
+      <div class="seg startgruppe" id="startgruppe" role="group" aria-label="Neuen Lauf starten" hidden>
+        <span class="lbl">Neuer Lauf</span><button id="startDemo">▶ Demo</button><button id="startLive">▶ Echter Lauf</button>
+      </div>
+      <button class="btn stopp" id="stopp" hidden>■ Abbrechen</button>
       <button class="btn" id="mehr" aria-expanded="false">Lauf ▾</button>
     </div>
   </div>
   <div class="laufbox" id="laufbox" hidden>
     <span class="badge" id="modus" hidden></span>
     <select id="run" aria-label="Lauf wählen"></select>
-    <label>Agent in Teil 1 <select id="agent"></select></label>
-    <button class="btn" id="follow">Live folgen</button>
     <div class="startline" id="startline"></div>
     <details class="mehr" id="protokoll">
       <summary>Protokoll: jeder Schritt dieses Laufs</summary>
       <ol class="log" id="log"></ol>
     </details>
   </div>
+
+  <div class="entscheidung" id="entscheidung" hidden>
+    <span id="entscheidungText"></span>
+    <span class="aktionen"><a class="btn" id="play2" target="_blank" rel="noopener">Ergebnis spielen</a><button class="btn primary" id="freigabe">✓ Freigeben</button><button class="btn stopp" id="verwerfen">✕ Verwerfen</button></span>
+  </div>
+
+  <nav class="stufen" id="stufen" aria-label="Ablauf in Stufen" hidden></nav>
 
   <section id="v2" hidden>
     <div class="v2kopf">
@@ -244,12 +315,14 @@ details.mehr[open] > summary { margin-bottom: 10px; }
   </section>
 
   <section class="panel" id="panel">
-    <div class="panelhead"><div class="who" id="who"></div><div class="rounds" id="rounds"></div></div>
+    <div class="panelhead"><div class="who"><span id="who"></span><span class="sub" id="was"></span></div><div class="rounds" id="rounds"></div><button class="btn" id="zu" aria-label="Details schließen">×</button></div>
     <div class="flow" id="tabs"></div>
-    <div class="erkl" id="erkl"></div>
-    <p class="pfad" id="outlbl" hidden></p>
-    <div class="pane" id="left"></div>
-    <div class="pane out" id="out" hidden></div>
+    <div class="drawer zeiger" id="drawer" hidden>
+      <div class="erkl" id="erkl" hidden></div>
+      <p class="pfad" id="outlbl" hidden></p>
+      <div class="pane" id="left"></div>
+      <div class="pane out" id="out" hidden></div>
+    </div>
   </section>
 </div>
 <script>
@@ -274,42 +347,43 @@ const ART = { modell: 'Sprachmodell', agent: 'Agent mit Werkzeugen', skript: 'Sk
 const KI = a => a === 'modell' || a === 'agent';
 const SKRIPTE = ['gate', 'abnahme'];
 const COLORS = ['var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+const dateien = n => `${n} ${n === 1 ? 'Datei' : 'Dateien'}`;
 const kb = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.', ',') + ' k' : String(n);
 
 let G = null, D = null, current = null, follow = true;
-let teil = location.hash === '#teil2' ? 2 : 1, tab = 'prompt';
+let teil = location.hash === '#teil2' ? 2 : 1, tab = null;   // tab null: nichts aufgeklappt
 let selK = null, selA = null;   // gewählter Knoten und (optional) fester Aufruf
 const records = {};              // volle Aufruf-Daten (Prompt, Kontext), unveränderlich
-let ansicht = 'graph', erklaert = null, agent1 = 'engine';
+let ansicht = 'graph', detail = false, erklaert = null, agent1 = 'engine';   // detail: Knoten in Teil 2 aufgeklappt
 
 // Nur neu zeichnen, wenn sich etwas geändert hat: Sonst gehen Klicks zwischen zwei Takten verloren.
 function setHtml(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; } }
 
 const BAUSTEINE = [
-  { t: 'prompt', name: 'Prompt', frage: 'Was soll es tun?' },
-  { t: 'kontext', name: 'Kontext', frage: 'Was weiß es?' },
-  { t: 'aufruf', name: 'Modell', frage: 'Wer arbeitet?' },
-  { t: 'ausgabe', name: 'Antwort', frage: 'Was kommt zurück?' },
-  { t: 'harness', name: 'Harness', frage: 'Was macht Code daraus?' },
+  { t: 'prompt', name: 'Prompt' },
+  { t: 'kontext', name: 'Kontext' },
+  { t: 'aufruf', name: 'Modell' },
+  { t: 'ausgabe', name: 'Antwort' },
+  { t: 'harness', name: 'Harness' },
 ];
 const OPS = ['+', '→', '→', '→'];
 const ERKL = {
-  prompt: { kern: '<b>Prompt Engineering:</b> Eine Datei legt Rolle, Regeln und Ausgabeformat des Agenten fest.', lang: [
+  prompt: { titel: 'Prompt Engineering', kern: 'Eine Datei legt Rolle, Regeln und Ausgabeformat fest.', lang: [
     'Der Prompt gehört zum Projekt: Er liegt unter <code>prompts/</code> und wird wie Code versioniert.',
     'Er nennt die Aufgabe, die Grenzen und das genaue Ausgabeformat, denn die Antwort wird maschinell weiterverarbeitet.',
     'Beispiel: Die Oberfläche muss einen festen Bedienvertrag einhalten, sonst kann das Prüfskript das Spiel nicht spielen.' ] },
-  kontext: { kern: '<b>Kontext Engineering:</b> Das Modell weiß nur, was in dieser einen Nachricht steht.', lang: [
+  kontext: { titel: 'Kontext Engineering', kern: 'Das Modell weiß nur, was in dieser einen Nachricht steht.', lang: [
     'Jeder Agent bekommt gezielt die Dateien, die er braucht. Die Auswahl steht in <code>orchestrator/graph.py</code>.',
     'Die Engine sieht nur die Spezifikation, nicht die Recherche. Das hält sie beim Vertrag.',
     'Zu wenig Kontext führt zum Raten, zu viel kostet Tokens und lenkt ab.' ] },
-  aufruf: { kern: '<b>Modell:</b> Austauschbar. <code>config.json</code> legt fest, wer welche Rolle übernimmt.', lang: [
+  aufruf: { titel: 'Modell', kern: 'Austauschbar: <code>config.json</code> legt die Rollen fest.', lang: [
     'Einfache Rollen sind ein HTTP-Aufruf: eine Nachricht rein, eine Antwort raus.',
     'Agenten mit Werkzeugen arbeiten selbst im Ordner. Sie dürfen nur, was ausdrücklich freigegeben ist.',
     'Fällt ein Anbieter aus, weicht die Harness auf einen anderen aus und meldet das.' ] },
-  ausgabe: { kern: '<b>Antwort:</b> Zunächst nur Text. Erst der Code drumherum macht daraus Dateien.', lang: [
+  ausgabe: { titel: 'Antwort', kern: 'Zunächst nur Text. Erst der Code drumherum macht daraus Dateien.', lang: [
     'Die Antwort wird live gestreamt, man sieht das Modell arbeiten.',
     'Ob sie etwas taugt, entscheidet nicht das Modell, sondern der nächste Baustein.' ] },
-  harness: { kern: '<b>Harness Engineering:</b> Normaler Code prüft und steuert, was das Modell liefert.', lang: [
+  harness: { titel: 'Harness Engineering', kern: 'Normaler Code prüft und steuert, was das Modell liefert.', lang: [
     'Sie übernimmt Codeblöcke in Dateien, prüft die Syntax und committet in einen eigenen Git-Worktree.',
     'Über „bestanden“ entscheiden Tests und ein Browser-Skript, das das Spiel wirklich spielt. Kein Modell benotet sich selbst.',
     'Ist eine Antwort unbrauchbar, fragt sie genau einmal mit dem Fehler nach. Scheitert es weiter, scheitert der Lauf sichtbar.' ] },
@@ -327,7 +401,8 @@ function erklHtml(id, wert) {
 
 // ---------------------------------------------------------------- Ableitungen aus den Events
 const known = e => G.knoten[e.knoten];
-function stateOf(k) { let s = 'wait'; for (const e of D.events) if (e.knoten === k && LABEL[e.status]) s = e.status; return s; }
+// Bei einem abgebrochenen Lauf arbeitet niemand mehr: Was noch auf „läuft“ stand, gilt als Fehler.
+function stateOf(k) { let s = 'wait'; for (const e of D.events) if (e.knoten === k && LABEL[e.status]) s = e.status; return s === 'run' && D.abgebrochen ? 'fail' : s; }
 function callsOf(k) { return Object.values(D.aufrufe).filter(a => a.knoten === k).sort((a, b) => a.id.localeCompare(b.id)); }
 function phaseOf(k) { return G.knoten[k].phase; }
 function phaseNodes(p) { return Object.keys(G.knoten).filter(k => phaseOf(k) === p); }
@@ -339,7 +414,8 @@ function runState() {
   if (!last) return ['run', 'startet'];
   if (last.knoten === 'orchestrator') return ['fail', last.text];
   if (last.knoten === 'freigabe' && last.status === 'run') return ['wait', 'wartet auf deine Freigabe'];
-  if (last.knoten === 'freigabe' && last.status === 'ok') return ['ok', 'freigegeben, in main'];
+  if (last.knoten === 'freigabe' && last.status === 'ok') return ['ok', 'freigegeben: arbeitsbereich/projekt, Branch main'];
+  if (last.knoten === 'freigabe' && last.status === 'fail') return ['fail', 'verworfen, Entwurf gelöscht'];
   return ['run', 'läuft'];
 }
 function autoSelect() {
@@ -366,6 +442,56 @@ function tsec(e) {
   d.setHours(h, m, s, 0); return d.getTime() / 1000;
 }
 
+// ---------------------------------------------------------------- Teil 1: Ablauf in Stufen
+// Nur Anzeige: Die Agenten werden in einfache Stufen gruppiert. Knoten, die hier fehlen, landen in „Weitere“.
+const STUFEN = [
+  { name: 'Verstehen', ids: ['auftrag', 'recherche_a', 'recherche_b', 'pruefung'] },
+  { name: 'Planen', ids: ['spezifikation', 'design'] },
+  { name: 'Bauen', ids: ['engine', 'ui', 'tests'] },
+  { name: 'Prüfen', ids: ['gate', 'testcheck', 'korrektur'] },
+  { name: 'Fertigstellen', ids: ['integration', 'abnahme', 'freigabe'] },
+];
+function stufenListe() {
+  const alle = Object.keys(G.knoten), drin = new Set(STUFEN.flatMap(s => s.ids));
+  const liste = STUFEN.map(s => ({ name: s.name, ids: s.ids.filter(k => G.knoten[k]) })).filter(s => s.ids.length);
+  const rest = alle.filter(k => !drin.has(k));
+  if (rest.length) liste.push({ name: 'Weitere', ids: rest });
+  return liste;
+}
+function stufeStatus(s, i, liste) {
+  const st = s.ids.map(stateOf);
+  if (st.includes('run')) return 'run';
+  if (st.includes('fail')) return 'fail';
+  const spaeter = liste.slice(i + 1).some(x => x.ids.some(k => stateOf(k) !== 'wait'));
+  if (st.every(x => x === 'ok') || (st.includes('ok') && spaeter)) return 'ok';
+  return 'wait';
+}
+function renderStufen() {
+  const nav = $('stufen');
+  nav.hidden = teil !== 1;
+  if (teil !== 1) return;
+  const liste = stufenListe();
+  setHtml(nav, liste.map((s, i) => {
+    const status = stufeStatus(s, i, liste), offen = s.ids.includes(agent1);
+    const pfeil = i < liste.length - 1 ? '<span class="pfeil" aria-hidden="true">›</span>' : '';
+    if (!offen) return `<button class="stufe" data-stufe="${i}"><span class="st ${status}"></span>${esc(s.name)}</button>${pfeil}`;
+    const schritte = s.ids.map(k => {
+      const z = stateOf(k), n = rounds(k), nn = z === 'wait' && status === 'ok';
+      return `<button class="schritt ${k === agent1 ? 'on' : ''} ${nn ? 'nn' : ''}" data-k="${k}" aria-pressed="${k === agent1}"><span class="st ${z}"></span>${esc(G.knoten[k].titel)}${n > 1 ? `<span class="versuch">${n}. Versuch</span>` : ''}${nn ? '<span class="nninfo">nicht nötig</span>' : ''}</button>`;
+    }).join('');
+    return `<div class="auf"><b>${esc(s.name)}</b>${schritte}</div>${pfeil}`;
+  }).join(''));
+}
+function waehleStufe(i) {
+  const s = stufenListe()[i]; if (!s) return;
+  const laeuft = s.ids.find(k => stateOf(k) === 'run'), lief = [...s.ids].reverse().find(k => stateOf(k) !== 'wait');
+  waehleAgent(laeuft || lief || s.ids[0]);
+}
+function waehleAgent(k) {
+  agent1 = k; erklaert = null; panelKey = outKey = '';
+  if (D) render();
+}
+
 // ---------------------------------------------------------------- Kopf
 function renderHead() {
   const s = D.start || {};
@@ -374,19 +500,16 @@ function renderHead() {
   $('modus').className = 'badge ' + (s.modus || '');
   $('play').hidden = !D.ergebnis; $('play').href = `/ergebnis/${current}/index.html`;
   const [st, txt] = runState();
-  const waiting = st === 'wait' ? ` <span>Freigeben mit</span> <code class="cmd">python orchestrator/run.py --freigabe</code>` : '';
   const calls = Object.values(D.aufrufe), tin = calls.reduce((n, a) => n + tokIn(a), 0), tout = calls.reduce((n, a) => n + tokOut(a), 0);
   const tok = calls.length ? ` <span title="geschätzt: 4 Zeichen ≈ 1 Token">${calls.length} Modell-Aufrufe · ≈ ${kb(tin)} Tokens rein, ${kb(tout)} raus</span>` : '';
   $('startline').innerHTML = s.befehl
-    ? `<span>Gestartet mit</span> <code class="cmd">${esc(s.befehl)}</code> <span class="runstate ${st}">${esc(txt)}</span>${tok}${waiting}`
+    ? `<span>Gestartet mit</span> <code class="cmd">${esc(s.befehl)}</code> <span class="runstate ${st}">${esc(txt)}</span>${tok}`
     : `<span class="empty">Dieser Lauf hat noch keine start.json, vermutlich ein altes Format. Setze mit „0 Alles zurücksetzen“ neu auf.</span>`;
   $('t1').classList.toggle('on', teil === 1); $('t2').classList.toggle('on', teil === 2);
-  $('follow').textContent = follow ? 'Live folgen: an' : 'Live folgen';
-  $('follow').classList.toggle('on', follow);
   $('v2').hidden = teil !== 2;
   document.body.classList.toggle('teil2', teil === 2);
-  setHtml($('zustand'), st === 'run' || st === 'fail' ? `<span class="runstate ${st}">${esc(txt)}</span>` : '');
-  $('panel').hidden = teil === 2 && ansicht !== 'knoten';
+  setHtml($('zustand'), st !== 'wait' ? `<span class="runstate ${st}">${esc(txt)}</span>` : '');
+  $('panel').hidden = teil === 2 && !detail;
   $('graphbox').hidden = ansicht !== 'graph';
   $('tlbox').hidden = ansicht !== 'zeit'; $('wallbox').hidden = ansicht !== 'live';
   const laeuft = Object.values(D.aufrufe).some(a => a.status === 'run');
@@ -396,7 +519,7 @@ function renderHead() {
 // ---------------------------------------------------------------- Teil 2: Loop und Graph erklären
 function renderKonzept() {
   const n = D.start.max_runden;
-  const loops = [['Recherche ↔ Prüfung', kantenCount('pruefung', 'recherche_a')], ['Tests ↔ Korrektur', kantenCount('gate', 'testcheck')], ['Integration ↔ Abnahme', kantenCount('abnahme', 'integration')]];
+  const loops = [['Recherche ↔ Prüfung', kantenCount('pruefung', 'recherche_a')], ['Tests ↔ Korrektur', kantenCount('gate', 'testcheck')], ['Integration ↔ Abnahmetest', kantenCount('abnahme', 'integration')]];
   const genommen = loops.filter(l => l[1]).map(([t, c]) => `${t}: ${c}× zurück`);
   setHtml($('konzept'), erklHtml('graph', [...genommen, ...(n ? [`höchstens ${n} Runden`] : [])].join(' · ')));
 }
@@ -433,14 +556,14 @@ function renderGraph() {
   }
   for (const k of Object.keys(G.knoten)) {
     const n = G.knoten[k], p = P(k), s = stateOf(k), r = rounds(k);
-    out += `<g class="node s-${s}" data-k="${k}" transform="translate(${p.x},${p.y})"><title>${esc(n.titel)}: ${esc(ART[n.art])}${KI(n.art) ? ` · ${esc(modelLabel(k))}` : ''}</title>
+    out += `<g class="node s-${s} ${detail && k === selK ? 'sel' : ''}" data-k="${k}" transform="translate(${p.x},${p.y})"><title>${esc(n.titel)}: ${esc(ART[n.art])}${KI(n.art) ? ` · ${esc(modelLabel(k))}` : ''}</title>
       <rect width="${C.nw}" height="${C.nh}" rx="8"/>
       <text class="t" x="${C.nw / 2}" y="${C.nh / 2 + 5}">${esc(n.titel)}</text>
       ${warned(k) ? `<circle class="warnmark" cx="0" cy="0" r="8"/><text class="warnmark-t" x="0" y="4" text-anchor="middle">!</text>` : ''}
       ${r > 1 ? `<rect class="rbadge" x="${C.nw - 34}" y="-8" width="30" height="16" rx="8"/><text class="rbadge-t" x="${C.nw - 19}" y="4" text-anchor="middle">R${r}</text>` : ''}
     </g>`;
   }
-  svg.innerHTML = out;
+  setHtml(svg, out);   // Nur bei Änderung neu zeichnen, sonst startet das Pulsieren ständig neu
 }
 
 // ---------------------------------------------------------------- Teil 2: Zeitleiste
@@ -509,44 +632,96 @@ async function record(id) {
 function harnessEvents() {
   return D.events.filter(e => e.knoten === selK && (e.status === 'harness' || (teil === 2 && e.status === 'kante')));
 }
+// Die Stationen eines Knotens. Skripte und Menschen haben weder Prompt noch Modell.
+function stationenVon(node) {
+  if (KI(node.art)) return BAUSTEINE;
+  return [{ t: 'harness', name: node.art === 'mensch' ? 'Freigabe' : 'Skript' }, { t: 'ausgabe', name: 'Ergebnis' }];
+}
+// Wo steht dieser Aufruf gerade? Abgeleitet aus Aufruf-Status, Stream und Knoten-Zustand.
+function stationsZustand(k, node, calls, call) {
+  const s = stateOf(k);
+  if (!KI(node.art)) return { harness: s, ausgabe: s === 'run' ? 'wait' : s };
+  const z = { prompt: 'wait', kontext: 'wait', aufruf: 'wait', ausgabe: 'wait', harness: 'wait' };
+  if (!call) return z;
+  const fertig = () => Object.assign(z, { prompt: 'ok', kontext: 'ok', aufruf: 'ok', ausgabe: 'ok' });
+  if (call !== calls[calls.length - 1]) { fertig(); z.harness = 'ok'; return z; }   // ältere Runde
+  z.prompt = z.kontext = 'ok';
+  const text = !!D.live[call.id];
+  if (call.status === 'run' && D.abgebrochen) { z.aufruf = text ? 'ok' : 'fail'; z.ausgabe = text ? 'fail' : 'wait'; }
+  else if (call.status === 'run') { z.aufruf = text ? 'ok' : 'run'; z.ausgabe = text ? 'run' : 'wait'; }
+  else if (call.status === 'fail') { z.aufruf = text ? 'ok' : 'fail'; z.ausgabe = text ? 'fail' : 'wait'; }
+  else { fertig(); z.harness = s === 'wait' ? 'run' : s; }
+  return z;
+}
+function taetigkeit(k, node, z) {
+  if (z.aufruf === 'run') return 'wartet auf das Modell';
+  if (z.ausgabe === 'run') return 'schreibt die Antwort';
+  if (z.harness === 'run') {
+    if (node.art === 'mensch') return 'wartet auf dich';
+    const h = D.events.filter(e => e.knoten === k && e.status === 'harness').pop();
+    return esc(h ? h.text.replace(/ \(.*$/, '') : 'Harness arbeitet');
+  }
+  if (Object.values(z).includes('fail')) return 'Fehler';
+  return stateOf(k) === 'ok' ? 'fertig' : 'wartet';
+}
+function setzeZeiger() {
+  const lage = (box, ziel) => { const b = box.getBoundingClientRect(), z = ziel.getBoundingClientRect(); box.style.setProperty('--zeiger', Math.max(16, Math.min(b.width - 16, z.left + z.width / 2 - b.left)) + 'px'); };
+  const station = $('tabs').querySelector('.station.on, .station.erkl-offen');
+  if (station && !$('drawer').hidden) lage($('drawer'), station);
+  const knoten = teil === 2 && ansicht === 'graph' && detail ? $('graph').querySelector('.node.sel') : null;
+  $('panel').classList.toggle('zeiger', !!knoten);
+  if (knoten) lage($('panel'), knoten);
+}
 let panelKey = '';
 function renderPanel() {
-  if (!selK) { setHtml($('who'), '<span class="empty">Noch nichts gestartet.</span>'); $('left').innerHTML = ''; $('out').innerHTML = ''; return; }
+  if (!selK) { setHtml($('who'), '<span class="empty">Noch nichts gestartet.</span>'); setHtml($('was'), ''); $('drawer').hidden = true; return; }
   const { k, node, calls, call } = selection();
-  const s = call ? call.status : stateOf(k);
-  const t1 = KI(node.art) ? 'Agent' : node.art === 'skript' ? 'Harness' : 'Du';
-  const title = teil === 1 ? `${t1} <span class="sub">· ${esc(phaseTitle(node.phase))}</span>` : `${esc(node.titel)} <span class="sub">· ${esc(ART[node.art])}</span>`;
-  $('who').parentElement.hidden = teil === 1;
-  setHtml($('who'), `<h2>${title}</h2>`);
+  const stationen = stationenVon(node), ops = KI(node.art) ? OPS : ['→'];
+  if ((teil === 2 || tab) && !stationen.some(b => b.t === tab)) tab = teil === 2 ? (KI(node.art) ? 'prompt' : 'ausgabe') : 'harness';
+  const z = stationsZustand(k, node, calls, call);
+  setHtml($('who'), `<h2>${esc(node.titel)}${teil === 2 ? ` <span class="sub">· ${esc(ART[node.art])}</span>` : ''}</h2>`);
+  setHtml($('was'), taetigkeit(k, node, z));   // Wer sonst gerade arbeitet, zeigt in Teil 1 die Stufen-Leiste
   setHtml($('rounds'), teil === 2 && calls.length > 1 ? calls.map(a => `<button data-a="${a.id}" class="${a.id === (call || {}).id ? 'on' : ''}">Runde ${a.runde}</button>`).join('') : '');
 
   const hv = harnessEvents();
-  const ki = KI(node.art), wert = {
-    prompt: ki ? `prompts/${node.prompt}` : 'kein Modell',
-    kontext: !ki ? 'kein Modell' : call ? `${(call.kontext || []).length} Dateien · ${kb((call.kontext || []).reduce((n, c) => n + c.zeichen, 0))} Zeichen` : `${(node.kontext || []).length} Dateien`,
-    aufruf: !ki ? 'Skript' : call ? call.modell.split('/').pop() : modelLabel(k).split(' · ').pop().split('/').pop(),
-    ausgabe: call && call.antwort_zeichen ? `${kb(call.antwort_zeichen)} Zeichen` : s === 'run' ? 'läuft …' : ki ? '–' : 'Bericht',
-    harness: `${hv.length} Schritte`,
+  const ki = KI(node.art), zeichen = call ? (call.antwort_zeichen || (D.live[call.id] || '').length) : 0;
+  const stand = {
+    prompt: ki ? `prompts/${node.prompt}` : '',
+    kontext: !ki ? '' : call ? `${dateien((call.kontext || []).length)} · ${kb((call.kontext || []).reduce((n, c) => n + c.zeichen, 0))} Zeichen` : dateien((node.kontext || []).length),
+    aufruf: !ki ? '' : call ? call.modell.split('/').pop() : modelLabel(k).split(' · ').pop().split('/').pop(),
+    ausgabe: !ki ? '' : zeichen ? `${kb(zeichen)} Zeichen` : '–',
+    harness: `${hv.length} ${hv.length === 1 ? 'Schritt' : 'Schritte'}`,
   };
-  setHtml($('tabs'), BAUSTEINE.map((b, i) => `<button data-t="${b.t}" class="${b.t === tab ? 'on' : ''} ${['aufruf', 'ausgabe'].includes(b.t) ? 'klein' : ''} ${!ki && ['prompt', 'kontext', 'aufruf'].includes(b.t) ? 'leer' : ''}"><b>${b.name}</b></button>${i < OPS.length ? `<span class="op">${OPS[i]}</span>` : ''}`).join(''));
-  const baustein = BAUSTEINE.find(b => b.t === tab);
-  setHtml($('erkl'), erklHtml(tab, `${baustein.frage} ${esc(wert[tab])}`));
-  $('left').hidden = tab === 'ausgabe'; $('out').hidden = tab !== 'ausgabe'; $('outlbl').hidden = tab !== 'ausgabe';
+  // Das Gerüst bleibt stehen, nur Klassen und Zahlen ändern sich: So gehen keine Klicks verloren und das Leuchten läuft durch.
+  setHtml($('tabs'), stationen.map((b, i) => {
+    const e = teil === 1 && KI(node.art) ? ERKL[b.t] : null;
+    return `<div class="station" data-s="${b.t}"><button class="haupt" data-t="${b.t}"><b>${e ? e.titel : b.name}</b>${e ? `<span class="kurz">${e.kern}</span>` : ''}<span class="stand"></span></button>${e ? `<button class="info" data-erkl="${b.t}">i</button>` : ''}</div>${i < ops.length ? `<span class="op" data-nach="${b.t}">${ops[i]}</span>` : ''}`;
+  }).join(''));
+  $('tabs').querySelectorAll('.station').forEach(el => {
+    const t = el.dataset.s, offen = erklaert === t, info = el.querySelector('.info');
+    el.className = `station s-${z[t]} ${t === tab ? 'on' : ''} ${offen ? 'erkl-offen' : ''}`;
+    const st = el.querySelector('.stand'); if (st.textContent !== stand[t]) st.textContent = stand[t];
+    if (info) { info.classList.toggle('offen', offen); info.textContent = offen ? '×' : 'i'; info.title = offen ? 'Schließen' : 'Genauer erklären'; info.setAttribute('aria-label', info.title); info.setAttribute('aria-expanded', offen); }
+  });
+  $('tabs').querySelectorAll('.op').forEach(el => el.classList.toggle('on', z[el.dataset.nach] === 'ok'));
 
+  const erkl = teil === 1 && KI(node.art) && stationen.some(b => b.t === erklaert);
+  $('erkl').hidden = !erkl;
+  setHtml($('erkl'), erkl ? `<ul>${ERKL[erklaert].lang.map(x => `<li>${x}</li>`).join('')}</ul>` : '');
+  $('drawer').hidden = !tab && !erkl;
+  $('left').hidden = !tab || tab === 'ausgabe'; $('out').hidden = tab !== 'ausgabe'; $('outlbl').hidden = tab !== 'ausgabe';
+
+  const s = call ? call.status : stateOf(k);
   const key = [teil, k, call && call.id, call && call.status, tab, hv.length, s].join('|');
   if (key !== panelKey) { panelKey = key; renderLeft(node, call, hv, key); }
   renderOut(node, call);
+  setzeZeiger();
 }
 async function renderLeft(node, call, hv, key) {
   const left = $('left');
-  if (tab === 'ausgabe') return;
+  if (!tab || tab === 'ausgabe') return;
   if (tab === 'harness') {
     left.innerHTML = (hv.length ? `<ul class="haken">${hv.map(e => `<li class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text.replace(/ \(.*$/, ''))}</li>`).join('')}</ul><details class="tech"><summary>Befehle zeigen</summary><ul class="hl">${hv.map(e => `<li><time>${esc(e.zeit)}</time><span class="${e.status === 'kante' ? 'kante' : e.warnung ? 'warn' : ''}">${esc(e.text)}</span>${e.befehl ? `<code>${esc(e.befehl)}</code>` : ''}</li>`).join('')}</ul></details>` : '<p class="empty">Noch keine Harness-Schritte.</p>');
-    return;
-  }
-  if (!KI(node.art)) {
-    const what = node.art === 'mensch' ? 'Hier bist du gefragt. Kein Modell, kein Prompt.' : `Dieser Schritt ist ein Skript. Kein Modell, kein Prompt. Er führt aus: <code>${esc(node.befehl)}</code>`;
-    left.innerHTML = `<p class="note">${what}</p>` + (tab === 'aufruf' && node.befehl ? `<pre class="raw box">$ ${esc(node.befehl)}</pre>` : '');
     return;
   }
   if (!call) {
@@ -600,7 +775,7 @@ function renderOut(node, call) {
     text = ev ? D.dateien[ev.datei] : '';
     lbl = ev ? ev.datei : '';
     if (!text) html = node.art === 'mensch' && stateOf(selK) === 'run' && node.befehl
-      ? `<p>Der Lauf wartet auf dich. Prüfe das Ergebnis über „Ergebnis spielen“ und übernimm es dann mit</p><pre class="raw box">$ ${esc(node.befehl)}</pre>`
+      ? `<p>Der Lauf wartet auf dich. Prüfe das Ergebnis über „Ergebnis spielen“ und übernimm es dann oben mit „✓ Freigeben“ nach <code>main</code> oder lösche den Entwurf mit „✕ Verwerfen“.</p>`
       : `<p class="empty">${stateOf(selK) === 'run' ? 'Läuft …' : 'Noch keine Ausgabe.'}</p>`;
   }
   $('outlbl').textContent = lbl;
@@ -634,18 +809,85 @@ function renderLog() {
 // ---------------------------------------------------------------- Takt
 function render() {
   if (teil === 1) { selK = agent1; selA = null; }   // Teil 1 zeigt immer denselben Agenten
-  else if (follow || !selK) autoSelect();
+  else if (!detail && (follow || !selK)) autoSelect();   // Ein aufgeklappter Knoten bleibt stehen
   renderHead();
+  renderStufen();
   if (teil === 2) { renderKonzept(); renderGraph(); renderTimeline(); renderWall(); }
   renderPanel();
   renderLog();
+  renderStart();
 }
+// ---------------------------------------------------------------- Lauf starten und abbrechen (über dashboard.py)
+let PZ = null;   // Zustand des Prozesses, den das Dashboard gestartet hat
+function renderStart() {
+  // Oben: global starten oder abbrechen. Die Entscheidung über den angezeigten Lauf steht in einer eigenen Leiste darunter.
+  const laeuft = !!(PZ && PZ.laeuft), offen = PZ && PZ.offen_live;
+  $('startgruppe').hidden = laeuft; $('stopp').hidden = !laeuft;
+  $('startLive').classList.toggle('gesperrt', !!offen);
+  $('startLive').title = offen ? `Gesperrt: Der echte Lauf ${offen} wartet noch auf Freigabe oder Verwerfen` : 'Echter Lauf mit den Modellen aus config.json, kostet Guthaben';
+  const letzt = D && D.events[D.events.length - 1];
+  const wartet = !laeuft && !!D && runState()[0] === 'wait';
+  const abgebrochen = !laeuft && !!letzt && letzt.knoten === 'orchestrator';
+  const leiste = $('entscheidung');
+  leiste.hidden = !wartet && !abgebrochen;
+  leiste.classList.toggle('abgebrochen', abgebrochen);
+  if (wartet || abgebrochen) {
+    const art = D.start.modus === 'live' ? 'Echter Lauf' : 'Demo';
+    setHtml($('entscheidungText'), wartet
+      ? `<b>${art} ${esc(current)} ist fertig.</b> Spiel das Ergebnis und entscheide: in <code>main</code> übernehmen oder verwerfen.`
+      : `<b>${art} ${esc(current)} wurde abgebrochen.</b> Der halbe Entwurf liegt noch im Arbeitsbereich.`);
+    $('play2').hidden = !wartet || !D.ergebnis; $('play2').href = `/ergebnis/${current}/index.html`;
+    $('freigabe').hidden = !wartet;
+    $('verwerfen').textContent = wartet ? '✕ Verwerfen' : '✕ Entwurf löschen';
+  }
+  if (wartet) $('play').hidden = true;   // steht dann in der Leiste
+  const fehler = PZ && !laeuft && PZ.code && !PZ.abgebrochen;
+  $('startfehler').hidden = !fehler;
+  if (fehler) $('startfehler').textContent = `Lauf mit Fehler beendet: ${PZ.letzte}`;
+}
+async function post(pfad, daten) {
+  const r = await fetch(pfad, { method: 'POST', headers: { 'X-Dashboard': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(daten || {}) });
+  if (r.status === 404) { alert('Das Dashboard läuft noch in einer älteren Version und kennt diese Aktion nicht. Starte den Task „1 Dashboard starten“ neu.'); return null; }
+  if (!r.ok) { alert(r.status === 409 ? await r.text() : `Fehler ${r.status}: ${await r.text()}`); return null; }
+  return r.json();
+}
+async function starte(modus) {
+  const offen = modus === 'live' && PZ && PZ.offen_live;
+  if (offen) {
+    if (confirm(`Der echte Lauf ${offen} wartet noch auf deine Entscheidung. Erst danach startet ein neuer echter Lauf.\n\nZu diesem Lauf wechseln?`)) {
+      switchRun(offen); follow = false; $('run').value = offen; tick();
+    }
+    return;
+  }
+  if (modus === 'live' && !confirm('Echter Lauf mit den Modellen aus config.json. Das kostet Guthaben bei den Anbietern. Starten?')) return;
+  const z = await post('/api/start', { modus });
+  if (!z) return;
+  PZ = z; follow = true; detail = false; renderStart();   // Live folgen: Der neue Lauf erscheint von selbst
+  tick();
+}
+async function entscheide(aktion) {
+  const frage = aktion === 'freigabe'
+    ? `Lauf ${current} freigeben? Sein Stand wird in arbeitsbereich/projekt der neue main. Eine frühere Freigabe bleibt in der Git-Historie.`
+    : `Lauf ${current} verwerfen? Worktrees, Branches und das Ergebnis dieses Laufs werden gelöscht. Das Protokoll bleibt.`;
+  if (!confirm(frage)) return;
+  $('freigabe').disabled = $('verwerfen').disabled = true;
+  const z = await post('/api/' + aktion, { lauf: current });
+  $('freigabe').disabled = $('verwerfen').disabled = false;
+  if (z && !z.ok) alert(`${aktion === 'freigabe' ? 'Freigabe' : 'Verwerfen'} fehlgeschlagen:\n${z.ausgabe}`);
+  tick();
+}
+async function stoppe() {
+  if (!confirm('Laufenden Lauf abbrechen?')) return;
+  const z = await post('/api/stopp');
+  if (z) { PZ = z; renderStart(); tick(); }
+}
+
 async function tick() {
   try {
+    PZ = await (await fetch('/api/prozess')).json();
+    renderStart();
     if (!G) {
       G = await (await fetch('/api/graph')).json();
-      $('agent').innerHTML = Object.keys(G.knoten).filter(k => KI(G.knoten[k].art)).map(k => `<option value="${k}">${esc(G.knoten[k].titel)}</option>`).join('');
-      $('agent').value = agent1;
     }
     const runs = await (await fetch('/api/runs')).json(), sel = $('run');
     if (sel.options.length !== runs.length) {
@@ -653,9 +895,10 @@ async function tick() {
       if (!current || follow) switchRun(runs[0]);
       sel.value = current;
     }
-    if (!current) { $('zustand').innerHTML = '<span class="empty">Noch kein Lauf. Starte in VS Code den Task „2 Demo ohne API-Keys“.</span>'; return; }
+    if (!current) { $('zustand').innerHTML = '<span class="empty">Noch kein Lauf. Starte oben mit „Demo starten“.</span>'; return; }
     D = await (await fetch('/api/run/' + current)).json();
     D.start = D.start || {};
+    D.abgebrochen = (D.events[D.events.length - 1] || {}).knoten === 'orchestrator';
     render();
   } catch (e) {
     console.error(e);
@@ -663,20 +906,31 @@ async function tick() {
     $('zustand')._html = null;
   }
 }
-function switchRun(id) { current = id; selK = null; selA = null; panelKey = outKey = logKey = ''; $('wall').dataset.key = ''; }
-function setTeil(n) { teil = n; ansicht = 'graph'; erklaert = null; history.replaceState(null, '', n === 2 ? '#teil2' : '#teil1'); panelKey = logKey = ''; if (D) render(); }
-function pick(k, a) { follow = false; selK = k; selA = a || null; if (teil === 2) ansicht = 'knoten'; if (D) render(); }
-function toggleErkl(id) { erklaert = erklaert === id ? null : id; if (D) render(); }
-function setTab(t) { tab = t; erklaert = null; if (D) render(); }
+function switchRun(id) { current = id; selK = null; selA = null; detail = false; panelKey = outKey = logKey = ''; $('wall').dataset.key = ''; }
+function setTeil(n) { teil = n; ansicht = 'graph'; detail = false; tab = null; erklaert = null; history.replaceState(null, '', n === 2 ? '#teil2' : '#teil1'); panelKey = logKey = ''; if (D) render(); }
+function pick(k, a) {
+  detail = !(detail && selK === k && !a);   // Zweiter Klick auf denselben Knoten klappt wieder zu
+  selK = k; selA = a || null;
+  if (D) render();
+  if (detail) (ansicht === 'graph' ? $('graphbox') : $('panel')).scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function toggleErkl(id) { erklaert = erklaert === id ? null : id; if (erklaert && id !== 'graph' && tab !== id) tab = null; if (D) render(); }
+function setTab(t) { tab = teil === 1 && tab === t ? null : t; if (teil === 1 && erklaert !== t) erklaert = null; if (D) render(); }
 
 $('t1').onclick = () => setTeil(1);
 $('t2').onclick = () => setTeil(2);
-$('follow').onclick = () => { follow = !follow; if (follow) selA = null; if (D) render(); };
-$('run').onchange = e => { switchRun(e.target.value); follow = false; tick(); };
-$('tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) setTab(b.dataset.t); };
-$('erkl').onclick = $('konzept').onclick = e => { const b = e.target.closest('[data-erkl]'); if (b) toggleErkl(b.dataset.erkl); };
+$('run').onchange = e => { switchRun(e.target.value); follow = e.target.selectedIndex === 0; tick(); };   // neuester Lauf: weiter folgen
+$('tabs').onclick = e => { const i = e.target.closest('[data-erkl]'); if (i) return toggleErkl(i.dataset.erkl); const b = e.target.closest('[data-t]'); if (b) setTab(b.dataset.t); };
+$('konzept').onclick = e => { const b = e.target.closest('[data-erkl]'); if (b) toggleErkl(b.dataset.erkl); };
 $('ansicht').onclick = e => { if (e.target.dataset.a) { ansicht = e.target.dataset.a; if (D) render(); } };
-$('agent').onchange = e => { agent1 = e.target.value; panelKey = outKey = ''; if (D) render(); };
+$('stufen').onclick = e => { const b = e.target.closest('[data-k]'); if (b) return waehleAgent(b.dataset.k); const s = e.target.closest('[data-stufe]'); if (s) waehleStufe(+s.dataset.stufe); };
+$('zu').onclick = () => { detail = false; if (D) render(); };
+$('graphbox').onscroll = setzeZeiger;
+$('startDemo').onclick = () => starte('demo');
+$('startLive').onclick = () => starte('live');
+$('stopp').onclick = stoppe;
+$('freigabe').onclick = () => entscheide('freigabe');
+$('verwerfen').onclick = () => entscheide('verwerfen');
 $('mehr').onclick = () => { const zu = $('laufbox').hidden; $('laufbox').hidden = !zu; $('mehr').setAttribute('aria-expanded', zu); };
 $('rounds').onclick = e => { if (e.target.dataset.a) pick(selK, e.target.dataset.a); };
 $('graph').onclick = e => { const g = e.target.closest('.node'); if (g) pick(g.dataset.k); };

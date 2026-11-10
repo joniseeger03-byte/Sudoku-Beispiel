@@ -101,7 +101,7 @@ KNOTEN = {
         "ausgabe": ["07-integration-runde-{runde}.md"],
     },
     "abnahme": {
-        "titel": "Abnahme", "phase": "ergebnis", "art": "skript", "pos": (8, 1),
+        "titel": "Abnahmetest", "phase": "ergebnis", "art": "skript", "pos": (8, 1),
         "befehl": "python test_spiel.py && python ui_check.py",
         "ausgabe": ["08-abnahme-runde-{runde}.md"],
     },

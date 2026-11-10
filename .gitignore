@@ -2,3 +2,4 @@
 __pycache__/
 arbeitsbereich/
 runs/*/
+runs/_prozess.log
