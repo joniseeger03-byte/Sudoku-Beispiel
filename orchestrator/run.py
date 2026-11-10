@@ -116,6 +116,9 @@ class Lauf:
         def write(chunk):
             with open(d / f"{aufruf_id}.txt", "a", encoding="utf-8") as f:
                 f.write(chunk)
+            # Für die Demo: wann welches Stück kam, damit die Wiedergabe im Originaltempo streamt
+            with open(d / f"{aufruf_id}.takt", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"t": round(time.time(), 3), "n": len(chunk)}) + "\n")
         return write
 
     # --- Kontext ------------------------------------------------------
@@ -567,19 +570,33 @@ def letztes_event(d):
     return json.loads(zeilen[-1]) if zeilen else {}
 
 
+def ist_wiedergabe(d):
+    """Läufe aus orchestrator/wiedergabe.py: keine Worktrees, keine Branches, nichts zu entscheiden."""
+    try:
+        return bool(json.loads((d / "start.json").read_text(encoding="utf-8")).get("quelle"))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+
 def wartend():
-    """Läufe, die fertig sind und auf Freigabe oder Verwerfen warten."""
+    """Echte Läufe, die fertig sind und auf Freigabe oder Verwerfen warten. Demos warten nie."""
     return [d.name for d in sorted(p for p in RUNS.iterdir() if p.is_dir())
-            if letztes_event(d).get("knoten") == "freigabe" and letztes_event(d).get("status") == "run"]
+            if not ist_wiedergabe(d) and letztes_event(d).get("knoten") == "freigabe" and letztes_event(d).get("status") == "run"]
 
 
 def ohne_entscheidung():
-    """Wartende und abgebrochene Läufe: Deren Entwurf darf verworfen werden."""
+    """Wartende und abgebrochene echte Läufe: Deren Entwurf darf verworfen werden."""
     return [d.name for d in sorted(p for p in RUNS.iterdir() if p.is_dir())
-            if d.name in wartend() or letztes_event(d).get("knoten") == "orchestrator"]
+            if d.name in wartend() or (not ist_wiedergabe(d) and letztes_event(d).get("knoten") == "orchestrator")]
+
+
+def keine_demo(lauf_id):
+    if lauf_id and ist_wiedergabe(RUNS / lauf_id):
+        sys.exit(f"Lauf {lauf_id} ist eine Demo (Aufzeichnung). Da gibt es nichts freizugeben oder zu verwerfen.")
 
 
 def approve(lauf_id):
+    keine_demo(lauf_id)
     offen = wartend()
     if not offen:
         sys.exit("Es wartet kein Lauf auf eine Freigabe.")
@@ -625,6 +642,7 @@ def schreibbar(fn, pfad, _):
 def verwerfen(lauf_id):
     """Gegenstück zur Freigabe: löscht den Entwurf (Worktrees, Branches, Ergebnis). Das Protokoll in runs/ bleibt.
     Geht für wartende und für abgebrochene Läufe."""
+    keine_demo(lauf_id)
     offen = ohne_entscheidung()
     if not offen:
         sys.exit("Kein Lauf wartet auf eine Entscheidung.")
@@ -651,6 +669,11 @@ def verwerfen(lauf_id):
 
 def zuruecksetzen():
     print(f"Löscht alle Läufe in {RUNS} und den Arbeitsbereich {WORK} (inklusive Git-Branches dort).")
+    import wiedergabe
+    weg = [a["id"] for a in wiedergabe.aufzeichnungen() if not a["gespeichert"]]
+    if weg:
+        print(f"Achtung: {len(weg)} Demo-Aufzeichnungen liegen nur in runs/ und gehen verloren: {', '.join(weg)}\n"
+              "Zum Behalten vorher im Dashboard unter „Lauf ▾“ auf „Als Demo behalten“ klicken.")
     if input("Wirklich? Tippe ja: ").strip().lower() != "ja":
         sys.exit("Abgebrochen.")
     for d in [*(p for p in RUNS.iterdir() if p.is_dir()), WORK]:
@@ -662,7 +685,7 @@ def zuruecksetzen():
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser()
-    p.add_argument("--demo", action="store_true", help="ohne API-Keys mit vorbereiteten Antworten")
+    p.add_argument("--demo", action="store_true", help="Skript-Demo mit vorbereiteten Antworten (die Demo im Dashboard spielt stattdessen Aufzeichnungen ab, siehe wiedergabe.py)")
     p.add_argument("--check", action="store_true", help="Keys und Modelle mit einer kurzen Anfrage testen")
     p.add_argument("--freigabe", nargs="?", const="", metavar="LAUF", help="wartenden Lauf nach main übernehmen")
     p.add_argument("--verwerfen", nargs="?", const="", metavar="LAUF", help="wartenden Lauf verwerfen, Entwurf löschen")

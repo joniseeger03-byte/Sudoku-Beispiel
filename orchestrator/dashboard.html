@@ -251,6 +251,7 @@ details.mehr[open] > summary { margin-bottom: 10px; }
 .startgruppe button + button { border-left: 1px solid var(--line); }
 .startgruppe button.gesperrt { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--c4); cursor: help; }
 .entscheidung { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 4px; background: var(--warnsoft); border: 1.5px solid var(--warn); }
+.entscheidung.demo { background: var(--soft); border-color: var(--accent); }
 .entscheidung.abgebrochen { background: var(--badsoft); border-color: var(--bad); }
 .entscheidung .aktionen { display: flex; flex-wrap: wrap; gap: 8px; }
 [hidden] { display: none !important; }
@@ -280,6 +281,9 @@ details.mehr[open] > summary { margin-bottom: 10px; }
   <div class="laufbox" id="laufbox" hidden>
     <span class="badge" id="modus" hidden></span>
     <select id="run" aria-label="Lauf wählen"></select>
+    <label>Demo spielt ab <select id="aufz" aria-label="Aufzeichnung für die Demo"></select></label>
+    <label>Tempo <select id="tempo"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label>
+    <button class="btn" id="behalten" hidden title="Kopiert diesen Lauf nach aufzeichnungen/. Dort kann er committet werden, dann läuft die Demo auch auf anderen Rechnern.">Als Demo behalten</button>
     <div class="startline" id="startline"></div>
     <details class="mehr" id="protokoll">
       <summary>Protokoll: jeder Schritt dieses Laufs</summary>
@@ -413,7 +417,8 @@ function runState() {
   const last = D.events[D.events.length - 1];
   if (!last) return ['run', 'startet'];
   if (last.knoten === 'orchestrator') return ['fail', last.text];
-  if (last.knoten === 'freigabe' && last.status === 'run') return ['wait', 'wartet auf deine Freigabe'];
+  // Eine Demo endet dort, wo im echten Lauf der Mensch entscheidet. Zu entscheiden gibt es bei ihr nichts.
+  if (last.knoten === 'freigabe' && last.status === 'run') return D.start.quelle ? ['ok', 'Demo zu Ende'] : ['wait', 'wartet auf deine Freigabe'];
   if (last.knoten === 'freigabe' && last.status === 'ok') return ['ok', 'freigegeben: arbeitsbereich/projekt, Branch main'];
   if (last.knoten === 'freigabe' && last.status === 'fail') return ['fail', 'verworfen, Entwurf gelöscht'];
   return ['run', 'läuft'];
@@ -496,12 +501,12 @@ function waehleAgent(k) {
 function renderHead() {
   const s = D.start || {};
   $('modus').hidden = !s.modus;
-  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : 'Demo: vorbereitete Antworten';
+  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : s.quelle ? `Demo: Aufzeichnung von Lauf ${s.quelle}${s.tempo > 1 ? `, ${s.tempo}× so schnell` : ''}` : 'Demo: vorbereitete Antworten';
   $('modus').className = 'badge ' + (s.modus || '');
   $('play').hidden = !D.ergebnis; $('play').href = `/ergebnis/${current}/index.html`;
   const [st, txt] = runState();
   const calls = Object.values(D.aufrufe), tin = calls.reduce((n, a) => n + tokIn(a), 0), tout = calls.reduce((n, a) => n + tokOut(a), 0);
-  const tok = calls.length ? ` <span title="geschätzt: 4 Zeichen ≈ 1 Token">${calls.length} Modell-Aufrufe · ≈ ${kb(tin)} Tokens rein, ${kb(tout)} raus</span>` : '';
+  const tok = calls.length ? ` <span title="geschätzt: 4 Zeichen ≈ 1 Token">${calls.length} ${s.quelle ? 'aufgezeichnete ' : ''}Modell-Aufrufe · ≈ ${kb(tin)} Tokens rein, ${kb(tout)} raus</span>` : '';
   $('startline').innerHTML = s.befehl
     ? `<span>Gestartet mit</span> <code class="cmd">${esc(s.befehl)}</code> <span class="runstate ${st}">${esc(txt)}</span>${tok}`
     : `<span class="empty">Dieser Lauf hat noch keine start.json, vermutlich ein altes Format. Setze mit „0 Alles zurücksetzen“ neu auf.</span>`;
@@ -748,11 +753,13 @@ async function renderLeft(node, call, hv, key) {
     const a = rec.anfrage, parts = [rec.prompt_datei, ...rec.kontext.map(c => c.name)];
     const fakten = [['Anbieter', rec.anbieter], ['Modell', rec.modell],
       ['Art', a.befehl ? (a.werkzeuge.length ? 'Agent mit Werkzeugen' : 'Claude Code ohne Werkzeuge') : 'HTTP-Aufruf']];
-    if (rec.dauer != null) fakten.push(['Dauer', `${String(rec.dauer).replace('.', ',')} s`]);
+    const dauer = rec.dauer_original ?? rec.dauer;
+    if (dauer != null) fakten.push(['Dauer', `${String(dauer).replace('.', ',')} s${rec.dauer_original != null ? ' (im Original)' : ''}`]);
     if (rec.kosten_usd != null) fakten.push(['Kosten', `${rec.kosten_usd.toFixed(3).replace('.', ',')} USD`]);
     fakten.push(['Tokens (geschätzt)', `≈ ${kb(tokIn(call))} rein · ${kb(tokOut(call))} raus`]);
     if (rec.fehler) fakten.push(['Fehler', rec.fehler]);
-    const demo = rec.simuliert ? `<p class="note warn">Demo: Statt des Modells antwortet ein vorbereiteter Text. Alles danach läuft echt.</p>` : '';
+    const demo = rec.aufzeichnung ? `<p class="note warn">Demo: Aufzeichnung des echten Aufrufs aus Lauf ${esc(rec.aufzeichnung)}. Hier antwortet gerade kein Modell.</p>`
+      : rec.simuliert ? `<p class="note warn">Demo: Statt des Modells antwortet ein vorbereiteter Text. Alles danach läuft echt.</p>` : '';
     const body = a.befehl ? '' : `{\n  "model": "${a.body.model}",\n  "stream": true,\n  "messages": [{\n    "role": "user",\n    "content": "${parts.map(p => '‹' + p + '›').join(' + ')}"\n  }]\n}`;
     const tech = a.befehl
       ? `<pre class="raw box">$ ${esc(a.befehl.join(' '))} &lt; ‹${esc(parts.join(' + '))}›</pre>` +
@@ -826,21 +833,32 @@ function renderStart() {
   $('startLive').classList.toggle('gesperrt', !!offen);
   $('startLive').title = offen ? `Gesperrt: Der echte Lauf ${offen} wartet noch auf Freigabe oder Verwerfen` : 'Echter Lauf mit den Modellen aus config.json, kostet Guthaben';
   const letzt = D && D.events[D.events.length - 1];
-  const wartet = !laeuft && !!D && runState()[0] === 'wait';
-  const abgebrochen = !laeuft && !!letzt && letzt.knoten === 'orchestrator';
+  const demo = !!(D && D.start.quelle);
+  const ende = demo && !laeuft && !!letzt && letzt.knoten === 'freigabe' && letzt.status === 'run';
+  const wartet = !demo && !laeuft && !!D && runState()[0] === 'wait';
+  const abgebrochen = !demo && !laeuft && !!letzt && letzt.knoten === 'orchestrator';   // eine Demo hinterlässt keinen Entwurf
   const leiste = $('entscheidung');
-  leiste.hidden = !wartet && !abgebrochen;
+  leiste.hidden = !wartet && !abgebrochen && !ende;
   leiste.classList.toggle('abgebrochen', abgebrochen);
-  if (wartet || abgebrochen) {
-    const art = D.start.modus === 'live' ? 'Echter Lauf' : 'Demo';
-    setHtml($('entscheidungText'), wartet
+  leiste.classList.toggle('demo', ende);
+  if (wartet || abgebrochen || ende) {
+    const art = D.start.modus === 'live' ? 'Echter Lauf' : 'Skript-Demo';
+    setHtml($('entscheidungText'), ende
+      ? `<b>Demo zu Ende.</b> An dieser Stelle entscheidet im echten Lauf ein Mensch: Ergebnis prüfen, dann freigeben oder verwerfen.`
+      : wartet
       ? `<b>${art} ${esc(current)} ist fertig.</b> Spiel das Ergebnis und entscheide: in <code>main</code> übernehmen oder verwerfen.`
       : `<b>${art} ${esc(current)} wurde abgebrochen.</b> Der halbe Entwurf liegt noch im Arbeitsbereich.`);
-    $('play2').hidden = !wartet || !D.ergebnis; $('play2').href = `/ergebnis/${current}/index.html`;
+    $('play2').hidden = !(wartet || ende) || !D.ergebnis; $('play2').href = `/ergebnis/${current}/index.html`;
     $('freigabe').hidden = !wartet;
+    $('verwerfen').hidden = ende;
     $('verwerfen').textContent = wartet ? '✕ Verwerfen' : '✕ Entwurf löschen';
   }
-  if (wartet) $('play').hidden = true;   // steht dann in der Leiste
+  if (wartet || ende) $('play').hidden = true;   // steht dann in der Leiste
+  // Demo = Aufzeichnung abspielen. Ohne Aufzeichnung erklärt der Knopf, was fehlt.
+  $('startDemo').classList.toggle('gesperrt', !AUFZ.length);
+  $('startDemo').title = AUFZ.length ? `Spielt die Aufzeichnung von Lauf ${$('aufz').value} ab (${$('tempo').value}×), ohne Modelle und ohne Kosten` : 'Noch keine Aufzeichnung: Lass einmal einen echten Lauf bis zum Ende laufen';
+  const eintrag = AUFZ.find(a => a.id === current);
+  $('behalten').hidden = !eintrag || eintrag.gespeichert;
   const fehler = PZ && !laeuft && PZ.code && !PZ.abgebrochen;
   $('startfehler').hidden = !fehler;
   if (fehler) $('startfehler').textContent = `Lauf mit Fehler beendet: ${PZ.letzte}`;
@@ -851,7 +869,28 @@ async function post(pfad, daten) {
   if (!r.ok) { alert(r.status === 409 ? await r.text() : `Fehler ${r.status}: ${await r.text()}`); return null; }
   return r.json();
 }
+// ---------------------------------------------------------------- Demo-Aufzeichnungen
+let AUFZ = [], aufzStand = 0;
+const merke = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const erinnere = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+async function ladeAufzeichnungen() {
+  AUFZ = await (await fetch('/api/aufzeichnungen')).json();
+  aufzStand = Date.now();
+  const sel = $('aufz'), vorher = sel.value || erinnere('demo-aufzeichnung');
+  const min = s => s == null ? '' : ` · ${Math.max(1, Math.round(s / 60))} min`;
+  setHtml(sel, AUFZ.map(a => `<option value="${a.id}">${a.id}${min(a.dauer)}${a.schleifen ? ' · mit Schleife' : ''}${a.ergebnis ? '' : ' · ohne Ergebnis'}${a.gespeichert ? ' · behalten' : ''}</option>`).join(''));
+  if (AUFZ.some(a => a.id === vorher)) sel.value = vorher;
+}
+async function behalten() {
+  const z = await post('/api/behalten', { lauf: current });
+  if (z) { alert(`Gespeichert in ${z.pfad}. Committe den Ordner, dann läuft diese Demo auch auf anderen Rechnern.`); ladeAufzeichnungen(); }
+}
+
 async function starte(modus) {
+  if (modus === 'demo' && !AUFZ.length) {
+    alert('Noch keine Aufzeichnung. Lass einmal einen echten Lauf bis zum Ende laufen. Danach ist er hier als Demo abspielbar.');
+    return;
+  }
   const offen = modus === 'live' && PZ && PZ.offen_live;
   if (offen) {
     if (confirm(`Der echte Lauf ${offen} wartet noch auf deine Entscheidung. Erst danach startet ein neuer echter Lauf.\n\nZu diesem Lauf wechseln?`)) {
@@ -860,7 +899,7 @@ async function starte(modus) {
     return;
   }
   if (modus === 'live' && !confirm('Echter Lauf mit den Modellen aus config.json. Das kostet Guthaben bei den Anbietern. Starten?')) return;
-  const z = await post('/api/start', { modus });
+  const z = await post('/api/start', modus === 'demo' ? { modus, quelle: $('aufz').value, tempo: +$('tempo').value } : { modus });
   if (!z) return;
   PZ = z; follow = true; detail = false; renderStart();   // Live folgen: Der neue Lauf erscheint von selbst
   tick();
@@ -890,12 +929,13 @@ async function tick() {
       G = await (await fetch('/api/graph')).json();
     }
     const runs = await (await fetch('/api/runs')).json(), sel = $('run');
+    if (sel.options.length !== runs.length || Date.now() - aufzStand > 15000) await ladeAufzeichnungen();
     if (sel.options.length !== runs.length) {
       sel.innerHTML = runs.map(r => `<option>${esc(r)}</option>`).join('');
       if (!current || follow) switchRun(runs[0]);
       sel.value = current;
     }
-    if (!current) { $('zustand').innerHTML = '<span class="empty">Noch kein Lauf. Starte oben mit „Demo starten“.</span>'; return; }
+    if (!current) { $('zustand').innerHTML = '<span class="empty">Noch kein Lauf. Starte oben einen echten Lauf. Fertige echte Läufe kannst du danach als Demo abspielen.</span>'; return; }
     D = await (await fetch('/api/run/' + current)).json();
     D.start = D.start || {};
     D.abgebrochen = (D.events[D.events.length - 1] || {}).knoten === 'orchestrator';
@@ -929,6 +969,10 @@ $('graphbox').onscroll = setzeZeiger;
 $('startDemo').onclick = () => starte('demo');
 $('startLive').onclick = () => starte('live');
 $('stopp').onclick = stoppe;
+$('behalten').onclick = behalten;
+$('aufz').onchange = e => { merke('demo-aufzeichnung', e.target.value); renderStart(); };
+$('tempo').onchange = e => { merke('demo-tempo', e.target.value); renderStart(); };
+$('tempo').value = ['1', '2', '4', '8'].includes(erinnere('demo-tempo')) ? erinnere('demo-tempo') : '2';
 $('freigabe').onclick = () => entscheide('freigabe');
 $('verwerfen').onclick = () => entscheide('verwerfen');
 $('mehr').onclick = () => { const zu = $('laufbox').hidden; $('laufbox').hidden = !zu; $('mehr').setAttribute('aria-expanded', zu); };

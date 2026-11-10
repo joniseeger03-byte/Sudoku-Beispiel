@@ -28,11 +28,11 @@
       "problemMatcher": []
     },
     {
-      "label": "2 Demo ohne API-Keys",
+      "label": "2 Demo: Aufzeichnung abspielen",
       "type": "shell",
-      "command": "python3 orchestrator/run.py --demo",
+      "command": "python3 orchestrator/wiedergabe.py --tempo 2",
       "windows": {
-        "command": "python orchestrator/run.py --demo"
+        "command": "python orchestrator/wiedergabe.py --tempo 2"
       },
       "presentation": {
         "panel": "dedicated"

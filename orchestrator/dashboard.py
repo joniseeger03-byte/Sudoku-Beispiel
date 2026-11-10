@@ -13,11 +13,14 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import graph
+import wiedergabe
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 PAGE = Path(__file__).resolve().parent / "dashboard.html"
 RUN_PY = Path(__file__).resolve().parent / "run.py"
+WIEDERGABE_PY = Path(__file__).resolve().parent / "wiedergabe.py"
+AUFZEICHNUNGEN = ROOT / "aufzeichnungen"
 PORT = 8000
 RUN_ID = re.compile(r"^[0-9-]+$")
 FILE_NAME = re.compile(r"^[\w.-]+$")
@@ -41,12 +44,14 @@ class Prozess:
     def laeuft(self):
         return self.p is not None and self.p.poll() is None
 
-    def starte(self, modus):
+    def starte(self, modus, quelle=None, tempo=1):
         with self.lock:
             if self.laeuft():
                 return False
             RUNS.mkdir(exist_ok=True)
-            befehl = [sys.executable, "-u", str(RUN_PY)] + (["--demo"] if modus == "demo" else [])
+            # Demo: einen aufgezeichneten echten Lauf abspielen. Echt: den Orchestrator mit den Modellen starten.
+            befehl = ([sys.executable, "-u", str(WIEDERGABE_PY), quelle, "--tempo", str(tempo)] if modus == "demo"
+                      else [sys.executable, "-u", str(RUN_PY)])
             extra = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True})
             with open(self.log, "w", encoding="utf-8") as out:
                 self.p = subprocess.Popen(befehl, cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
@@ -164,6 +169,8 @@ class Handler(BaseHTTPRequestHandler):
                                    capture_output=True, encoding="utf-8", errors="replace", timeout=60)
                 if r.returncode == 0:
                     return self.send(r.stdout.encode("utf-8"))
+        if parts == ["api", "aufzeichnungen"]:
+            return self.json([{k: v for k, v in a.items() if k != "pfad"} for a in wiedergabe.aufzeichnungen(RUNS, AUFZEICHNUNGEN)])
         if parts == ["api", "prozess"]:
             return self.json({**PROZESS.zustand(), "offen_live": offener_echter_lauf()})
         self.send(b"Nicht gefunden", "text/plain; charset=utf-8", 404)
@@ -178,18 +185,36 @@ class Handler(BaseHTTPRequestHandler):
         parts = self.path.split("?")[0].strip("/").split("/")
         if parts == ["api", "start"]:
             laenge = min(int(self.headers.get("Content-Length") or 0), 1000)
-            modus = json.loads(self.rfile.read(laenge) or b"{}").get("modus")
+            daten = json.loads(self.rfile.read(laenge) or b"{}")
+            modus, quelle, tempo = daten.get("modus"), daten.get("quelle"), daten.get("tempo", 2)
             if modus not in ("demo", "live"):
                 return self.send(b"modus: demo oder live", "text/plain; charset=utf-8", 400)
+            if modus == "demo":
+                liste = [a["id"] for a in wiedergabe.aufzeichnungen(RUNS, AUFZEICHNUNGEN)]
+                if not liste:
+                    return self.send("Noch keine Aufzeichnung. Lass einmal einen echten Lauf bis zur Freigabe laufen.".encode("utf-8"), "text/plain; charset=utf-8", 409)
+                quelle = quelle if quelle in liste else liste[0]
+                if tempo not in wiedergabe.TEMPI:
+                    return self.send(b"tempo: 1, 2, 4 oder 8", "text/plain; charset=utf-8", 400)
             offen = offener_echter_lauf() if modus == "live" else None
             if offen:
                 return self.send(f"Der echte Lauf {offen} wartet noch auf Freigabe oder Verwerfen.".encode("utf-8"), "text/plain; charset=utf-8", 409)
-            if not PROZESS.starte(modus):
+            if not PROZESS.starte(modus, quelle, tempo):
                 return self.send("Es läuft schon ein Lauf.".encode("utf-8"), "text/plain; charset=utf-8", 409)
             return self.json(PROZESS.zustand())
         if parts == ["api", "stopp"]:
             PROZESS.stoppe()
             return self.json(PROZESS.zustand())
+        if parts == ["api", "behalten"]:
+            # Aufzeichnung ins Repo übernehmen (aufzeichnungen/ ist nicht ignoriert), damit die Demo auch anderswo läuft
+            laenge = min(int(self.headers.get("Content-Length") or 0), 1000)
+            lauf_id = json.loads(self.rfile.read(laenge) or b"{}").get("lauf", "")
+            quelle = RUNS / lauf_id if RUN_ID.match(lauf_id or "") else None
+            if not quelle or not quelle.is_dir() or not wiedergabe.ist_aufzeichnung(quelle):
+                return self.send("Nur fertige echte Läufe lassen sich als Demo behalten.".encode("utf-8"), "text/plain; charset=utf-8", 400)
+            import shutil
+            shutil.copytree(quelle, AUFZEICHNUNGEN / lauf_id, dirs_exist_ok=True)
+            return self.json({"ok": True, "pfad": f"aufzeichnungen/{lauf_id}"})
         if parts in (["api", "freigabe"], ["api", "verwerfen"]):
             laenge = min(int(self.headers.get("Content-Length") or 0), 1000)
             lauf_id = json.loads(self.rfile.read(laenge) or b"{}").get("lauf", "")
