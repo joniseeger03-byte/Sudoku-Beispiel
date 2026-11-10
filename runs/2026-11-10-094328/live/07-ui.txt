@@ -1,0 +1,357 @@
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="tafel">
+  <header class="kopf">
+    <div class="kopfzeile">
+      <h1>Sudoku</h1>
+      <span id="status" class="status" role="status" aria-live="polite">&nbsp;</span>
+    </div>
+    <div class="stufen" role="group" aria-label="Schwierigkeit">
+      <button type="button" data-stufe="leicht">leicht</button>
+      <button type="button" data-stufe="mittel" class="aktiv">mittel</button>
+      <button type="button" data-stufe="schwer">schwer</button>
+    </div>
+  </header>
+
+  <div id="brett" class="brett" aria-label="Sudoku-Brett"></div>
+
+  <div class="ziffernfeld" aria-label="Ziffernfeld">
+    <button type="button" data-digit="1">1</button>
+    <button type="button" data-digit="2">2</button>
+    <button type="button" data-digit="3">3</button>
+    <button type="button" data-digit="4">4</button>
+    <button type="button" data-digit="5">5</button>
+    <button type="button" data-digit="6">6</button>
+    <button type="button" data-digit="7">7</button>
+    <button type="button" data-digit="8">8</button>
+    <button type="button" data-digit="9">9</button>
+    <button type="button" data-digit="0" aria-label="Löschen">⌫</button>
+  </div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>
+```
+
+```javascript
+(function () {
+  'use strict';
+
+  var brett = document.getElementById('brett');
+  var statusEl = document.getElementById('status');
+  var cells = [];
+  var grid = new Array(81).fill(0);
+  var given = new Array(81).fill(false);
+  var selected = -1;
+  var stufe = 'mittel';
+  var anfrage = 0;
+
+  // Brett aufbauen
+  for (var i = 0; i < 81; i++) {
+    var d = document.createElement('div');
+    d.className = 'zelle';
+    d.setAttribute('data-index', i);
+    var r = Math.floor(i / 9), c = i % 9;
+    if (c % 3 === 2 && c < 8) d.classList.add('blockrechts');
+    if (r % 3 === 2 && r < 8) d.classList.add('blockunten');
+    brett.appendChild(d);
+    cells.push(d);
+  }
+
+  brett.addEventListener('click', function (e) {
+    var el = e.target.closest('.zelle');
+    if (el) select(parseInt(el.getAttribute('data-index'), 10));
+  });
+
+  function konflikte(g) {
+    var bad = new Set();
+    var groups = [];
+    for (var k = 0; k < 9; k++) {
+      var row = [], col = [], blk = [];
+      for (var j = 0; j < 9; j++) {
+        row.push(k * 9 + j);
+        col.push(j * 9 + k);
+        blk.push((Math.floor(k / 3) * 3 + Math.floor(j / 3)) * 9 + (k % 3) * 3 + (j % 3));
+      }
+      groups.push(row, col, blk);
+    }
+    groups.forEach(function (grp) {
+      var seen = {};
+      grp.forEach(function (idx) {
+        var v = g[idx];
+        if (!v) return;
+        (seen[v] = seen[v] || []).push(idx);
+      });
+      Object.keys(seen).forEach(function (v) {
+        if (seen[v].length > 1) seen[v].forEach(function (x) { bad.add(x); });
+      });
+    });
+    return bad;
+  }
+
+  function select(i) {
+    selected = i;
+    render();
+  }
+
+  function render() {
+    var bad = konflikte(grid);
+    var sr = selected >= 0 ? Math.floor(selected / 9) : -1;
+    var sc = selected >= 0 ? selected % 9 : -1;
+    var full = true;
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i];
+      var r = Math.floor(i / 9), c = i % 9;
+      el.textContent = grid[i] ? String(grid[i]) : '';
+      if (!grid[i]) full = false;
+      var peer = selected >= 0 && i !== selected && (
+        r === sr || c === sc ||
+        (Math.floor(r / 3) === Math.floor(sr / 3) && Math.floor(c / 3) === Math.floor(sc / 3)));
+      el.classList.toggle('vorgabe', given[i]);
+      el.classList.toggle('eigene', !given[i] && !!grid[i]);
+      el.classList.toggle('selected', i === selected);
+      el.classList.toggle('peer', peer);
+      el.classList.toggle('konflikt', bad.has(i));
+    }
+    var solved = full && bad.size === 0;
+    document.body.classList.toggle('geloest', solved);
+    statusEl.textContent = solved ? 'ANGEKOMMEN' : '\u00a0';
+  }
+
+  function setDigit(v) {
+    if (selected < 0 || given[selected]) return;
+    grid[selected] = v;
+    render();
+  }
+
+  function move(dr, dc) {
+    if (selected < 0) { select(0); return; }
+    var r = Math.max(0, Math.min(8, Math.floor(selected / 9) + dr));
+    var c = Math.max(0, Math.min(8, selected % 9 + dc));
+    select(r * 9 + c);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k >= '1' && k <= '9') { setDigit(parseInt(k, 10)); e.preventDefault(); }
+    else if (k === 'Delete' || k === 'Backspace' || k === 'Del') { setDigit(0); e.preventDefault(); }
+    else if (k === 'ArrowUp') { move(-1, 0); e.preventDefault(); }
+    else if (k === 'ArrowDown') { move(1, 0); e.preventDefault(); }
+    else if (k === 'ArrowLeft') { move(0, -1); e.preventDefault(); }
+    else if (k === 'ArrowRight') { move(0, 1); e.preventDefault(); }
+  });
+
+  document.querySelectorAll('[data-digit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setDigit(parseInt(b.getAttribute('data-digit'), 10));
+    });
+  });
+
+  document.querySelectorAll('[data-stufe]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      neu(b.getAttribute('data-stufe'));
+    });
+  });
+
+  function markiereStufe() {
+    document.querySelectorAll('[data-stufe]').forEach(function (b) {
+      var on = b.getAttribute('data-stufe') === stufe;
+      b.classList.toggle('aktiv', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function neu(s) {
+    stufe = s;
+    markiereStufe();
+    var mein = ++anfrage;
+    fetch('api/neu?stufe=' + stufe)
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (mein !== anfrage) return;
+        grid = data.puzzle.slice();
+        given = grid.map(function (v) { return v !== 0; });
+        var first = grid.indexOf(0);
+        selected = first >= 0 ? first : 0;
+        render();
+      })
+      .catch(function () {
+        if (mein !== anfrage) return;
+        statusEl.textContent = 'STÖRUNG';
+      });
+  }
+
+  markiereStufe();
+  neu(stufe);
+})();
+```
+
+```css
+:root {
+  --brett: min(calc(100vw - 24px), 520px);
+  --linie: #E9E4D4;
+  --zahl-vorgabe: #E9E4D4;
+  --zahl-eigen: #FFB81C;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: #14161A;
+  color: #E9E4D4;
+  font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.geloest { --linie: #4ADE80; --zahl-vorgabe: #4ADE80; --zahl-eigen: #4ADE80; }
+
+.tafel {
+  width: var(--brett);
+  margin: 0 auto;
+  padding: 12px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kopf { display: flex; flex-direction: column; gap: 10px; }
+
+.kopfzeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid #3A4048;
+  padding-bottom: 8px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.status {
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #9AA0A8;
+  font-weight: 700;
+}
+body.geloest .status { color: #4ADE80; }
+
+.stufen { display: flex; }
+.stufen button {
+  flex: 1;
+  min-height: 44px;
+  background: transparent;
+  color: #E9E4D4;
+  border: 1px solid #3A4048;
+  margin-left: -1px;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color .12s, color .12s;
+}
+.stufen button:first-child { margin-left: 0; }
+.stufen button.aktiv {
+  background: #FFB81C;
+  color: #14161A;
+  border-color: #FFB81C;
+  font-weight: 700;
+}
+
+.brett {
+  width: var(--brett);
+  height: var(--brett);
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-rows: repeat(9, minmax(0, 1fr));
+  background: #1E2227;
+  border: 3px solid var(--linie);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.zelle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1E2227;
+  border: 1px solid #3A4048;
+  font-size: calc(var(--brett) / 9 * .6);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .12s;
+}
+.zelle.blockrechts { border-right: 3px solid var(--linie); }
+.zelle.blockunten { border-bottom: 3px solid var(--linie); }
+
+.zelle.vorgabe { color: var(--zahl-vorgabe); font-weight: 700; }
+.zelle.eigene { color: var(--zahl-eigen); font-weight: 600; }
+
+.zelle.peer { background-color: #2A2F36; }
+
+.zelle.selected {
+  background-color: #FFB81C;
+  color: #14161A;
+  box-shadow: inset 0 0 0 3px #E9E4D4;
+}
+
+.zelle.konflikt {
+  background-color: #4A1A1D;
+  background-image: repeating-linear-gradient(45deg, #E5484D55 0 3px, transparent 3px 8px);
+  color: #FF8A8E;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #E5484D;
+}
+.zelle.selected.konflikt {
+  background-color: #FFB81C;
+  color: #14161A;
+  box-shadow: inset 0 0 0 3px #E5484D, inset 0 0 0 5px #E9E4D4;
+}
+
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.ziffernfeld button {
+  min-height: 52px;
+  background: #262B31;
+  border: 1px solid #3A4048;
+  color: #FFB81C;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color .12s, color .12s;
+}
+.ziffernfeld button:active {
+  background: #FFB81C;
+  color: #14161A;
+}
+
+@media (hover: hover) {
+  .stufen button:not(.aktiv):hover { background: #262B31; }
+}
+```

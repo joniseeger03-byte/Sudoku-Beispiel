@@ -1,0 +1,166 @@
+```python
+"""engine.py - Sudoku-Engine (nur Standardbibliothek)."""
+
+import json
+import random
+import sys
+import time
+
+CLUES = {"leicht": 38, "mittel": 32, "schwer": 26}
+
+_FULL = 0x1FF  # Bits 0..8 fuer die Ziffern 1..9
+
+
+def _box(i):
+    return (i // 27) * 3 + (i % 9) // 3
+
+
+def solutions(puzzle, limit):
+    """Liefert eine Liste mit hoechstens `limit` Loesungen des Puzzles."""
+    grid = [int(v) for v in puzzle]
+    if len(grid) != 81 or limit <= 0:
+        return []
+
+    rows = [0] * 9
+    cols = [0] * 9
+    boxes = [0] * 9
+    for i, v in enumerate(grid):
+        if v == 0:
+            continue
+        if not 1 <= v <= 9:
+            return []
+        bit = 1 << (v - 1)
+        r, c, b = i // 9, i % 9, _box(i)
+        if (rows[r] | cols[c] | boxes[b]) & bit:
+            return []  # widerspruechliche Vorgaben
+        rows[r] |= bit
+        cols[c] |= bit
+        boxes[b] |= bit
+
+    found = []
+
+    def rec():
+        best = -1
+        best_mask = 0
+        best_count = 10
+        for i in range(81):
+            if grid[i]:
+                continue
+            mask = _FULL & ~(rows[i // 9] | cols[i % 9] | boxes[_box(i)])
+            cnt = bin(mask).count("1")
+            if cnt < best_count:
+                best, best_mask, best_count = i, mask, cnt
+                if cnt <= 1:
+                    break
+        if best == -1:
+            found.append(grid[:])
+            return
+        if best_count == 0:
+            return
+        r, c, b = best // 9, best % 9, _box(best)
+        mask = best_mask
+        while mask:
+            bit = mask & -mask
+            mask ^= bit
+            grid[best] = bit.bit_length()
+            rows[r] |= bit
+            cols[c] |= bit
+            boxes[b] |= bit
+            rec()
+            rows[r] &= ~bit
+            cols[c] &= ~bit
+            boxes[b] &= ~bit
+            grid[best] = 0
+            if len(found) >= limit:
+                return
+
+    rec()
+    return found
+
+
+def conflicts(grid):
+    """Indizes, die in Zeile, Spalte oder Block mit einem anderen Feld kollidieren."""
+    result = set()
+    units = []
+    for k in range(9):
+        units.append([k * 9 + j for j in range(9)])
+        units.append([j * 9 + k for j in range(9)])
+        br, bc = (k // 3) * 3, (k % 3) * 3
+        units.append([(br + dr) * 9 + bc + dc for dr in range(3) for dc in range(3)])
+    for unit in units:
+        seen = {}
+        for i in unit:
+            v = grid[i]
+            if v:
+                seen.setdefault(v, []).append(i)
+        for idxs in seen.values():
+            if len(idxs) > 1:
+                result.update(idxs)
+    return result
+
+
+def _random_solution():
+    """Zufaellige vollstaendige, gueltige Loesung per Musterverfahren."""
+    def shuffled_groups():
+        groups = [0, 1, 2]
+        random.shuffle(groups)
+        out = []
+        for g in groups:
+            inner = [0, 1, 2]
+            random.shuffle(inner)
+            out.extend(g * 3 + x for x in inner)
+        return out
+
+    rows = shuffled_groups()
+    cols = shuffled_groups()
+    digits = list(range(1, 10))
+    random.shuffle(digits)
+    return [digits[(3 * (r % 3) + r // 3 + c) % 9] for r in rows for c in cols]
+
+
+def _reduce(solution, target):
+    """Entfernt Ziffern, solange die Loesung eindeutig bleibt. None bei Misserfolg."""
+    puzzle = solution[:]
+    order = list(range(81))
+    random.shuffle(order)
+    clues = 81
+    for i in order:
+        if clues <= target:
+            break
+        saved = puzzle[i]
+        puzzle[i] = 0
+        if len(solutions(puzzle, 2)) == 1:
+            clues -= 1
+        else:
+            puzzle[i] = saved
+    return puzzle if clues == target else None
+
+
+def generate(level):
+    """Erzeugt ein Rätsel mit eindeutiger Lösung und genau CLUES[level] Hinweisen."""
+    if level not in CLUES:
+        raise ValueError("Unbekannte Stufe: %r" % (level,))
+    target = CLUES[level]
+    while True:
+        solution = _random_solution()
+        puzzle = _reduce(solution, target)
+        if puzzle is not None:
+            return {
+                "puzzle": puzzle,
+                "solution": solution,
+                "clues": sum(1 for v in puzzle if v != 0),
+                "level": level,
+            }
+
+
+def main(argv):
+    if len(argv) == 3 and argv[1] == "neu" and argv[2] in CLUES:
+        print(json.dumps(generate(argv[2])))
+        return 0
+    sys.stderr.write("Aufruf: python engine.py neu <leicht|mittel|schwer>\n")
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+```

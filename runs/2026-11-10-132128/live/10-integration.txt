@@ -1,0 +1,29 @@
+
+▶ Bash: ls; python ../../../../orchestrator/ui_check.py .; python test_spiel.py 2>&1 | tail -15
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\arbeitsbereich\worktrees\2026-11-10-132128\integration\board.js
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\arbeitsbereich\worktrees\2026-11-10-132128\integration\index.html
+
+
+▶ Bash: cat README.md; grep -n "geloest\|focus\|konflikt\|peer\|eigen\|vorgabe" style.css | head -40
+
+# Integrationsbericht
+
+## Was war kaputt
+Nichts. Ich habe die Oberfläche und die Engine gegen den Vertrag geprüft und keinen Bruch gefunden:
+- **Leeres Feld:** Die Engine liefert `0`. `board.js` stellt `0` als leeren Text dar, und `zeichne()` setzt `textContent` für `0` auf `''`.
+- **Rätsel laden:** `board.js` liest `d.puzzle`, und die Vorgaben ergeben sich aus `!== 0`. Der Abruf läuft über das relative `api/neu?stufe=…`.
+- **Bedienvertrag:** Die Felder tragen `data-index` 0 bis 80, und die Ziffern stehen als Text darin. Das Ziffernfeld hat `data-digit` 0 bis 9, die Stufenknöpfe haben `data-stufe`. `keydown` hängt auf `document`, und die Klassen `focus`, `konflikt` und `geloest` werden gesetzt.
+- **Design:** `style.css` setzt die Vorgaben aus `design.md` um, zum Beispiel die Klassen `peer`, `eigen` und `vorgabe` sowie den Titel „Geschafft“.
+
+## Was ich geändert habe
+Keine Dateien. Alle Änderungen blieben aus, auch an `engine.py`, `test_spiel.py` und dem Design.
+
+## Prüfung
+- `python ../../../../orchestrator/ui_check.py .`: alle 26 Punkte OK. Darunter sind das Raster mit 81 Feldern, Auswahl, Tastatur und Löschen, die Konflikte, die drei Stufen, das Rätsel aus der Engine und die Siegerkennung.
+- `python test_spiel.py`: alle Tests OK (A1_CLUES, GEN_leicht, GEN_mittel, GEN_schwer, CONF, CLI), Meldung „Alle Tests erfolgreich.“.
+
+Der `api/neu`-Endpunkt ist kein Teil dieses Ordners. Ihn bedient in der Abnahme offenbar die Harness, denn die Oberfläche lud dort das Rätsel aus der Engine. Beim Öffnen von `index.html` direkt aus dem Dateisystem lädt die Oberfläche kein Rätsel, weil dort kein Server antwortet. Das habe ich nicht gesondert geprüft.

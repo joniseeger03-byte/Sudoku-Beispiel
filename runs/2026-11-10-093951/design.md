@@ -1,0 +1,60 @@
+# Art-déco-Lichtspielhaus
+
+## Entscheidung
+Art déco gewinnt, weil es unter den bisherigen Designs fehlt. Zen-Garten, Morgenzeitung, Bauplan, Neo-Brutalismus, Terrazzo und Sashiko sind alle hell oder erdig, und keines ist ein dunkles Messing-auf-Nachtblau-Design. Gestufte Geometrie, Parallellinien und Metallakzente sind in reinem CSS machbar, mit `linear-gradient`, `border`, `box-shadow` und `outline`. Das helle Elfenbein auf tiefem Nachtblau gibt auf dem Smartphone hohen Kontrast. Die dicken Messinglinien um die 3×3-Blöcke bleiben auch bei kleiner Feldgröße erkennbar.
+
+## Vorgaben für die Oberfläche
+**Farben**
+- Hintergrund der Seite: `#0e1a2b` (Nachtblau). Dazu ein ruhiger Verlauf nach `#16253b` und optional ein Fächermuster aus `repeating-conic-gradient` mit höchstens 4 % Deckkraft.
+- Brettrahmen und Blocklinien: Messing `#c9a24b`. Block-Trennlinien 3 px, Feldlinien 1 px in `#4a5a72`.
+- Feldfläche: `#13233a`. Ziffern vorgegeben: Elfenbein `#f3ead3`.
+- Text, Beschriftungen: `#f3ead3`. Sekundärer Text: `#b8b09a`.
+- Akzent für Buttons und Ornamente: Messing `#c9a24b`, Hover/aktiv `#e3c070`. Text auf Messing: `#0e1a2b`.
+
+**Schrift** (nur Systemschriften)
+- Titel und Stufenwahl: `"Gill Sans", "Trebuchet MS", Futura, "Century Gothic", sans-serif`. Großbuchstaben, `letter-spacing: .18em`.
+- Ziffern im Brett: `Georgia, "Times New Roman", serif`, 600. Größe ca. 6,5 vw, mindestens 22 px.
+- Der Titel kann links und rechts eine Zierlinie haben (`::before`/`::after`, 2 Linien mit Raute).
+
+**Anordnung**
+- Eine zentrierte, symmetrische Spalte, maximal 480 px breit, passend zur Art-déco-Symmetrie.
+- Oben ein Titelband mit Zierlinie.
+- Darunter die drei Stufen-Buttons in einer Reihe, gleich breit, Mindesthöhe 44 px. Sie sind Pillen mit abgeschrägten Ecken (`clip-path: polygon`) und messingfarbenem Rand. Der aktive Button ist messingfarben gefüllt.
+- Dann das quadratische Brett (`aspect-ratio: 1`, volle Breite) mit doppeltem Messingrahmen (`border` plus `outline` mit Abstand).
+- Darunter das Ziffernfeld als 5×2-Raster: 1–5 oben, 6–9 und Löschen unten. Die Tasten sind mindestens 48 px hoch, nachtblau mit Messingrand und elfenbeinfarbener Ziffer. Löschen ist mit „✕“ beschriftet.
+
+**Stimmung**
+- Ein Abend im Lichtspielhaus: feierlich, ruhig, edel.
+- Keine Schatten außer einem feinen goldenen Schimmer (`box-shadow: 0 0 0 1px #c9a24b55`).
+- Bei `body.geloest` leuchtet der Brettrahmen heller (`#e3c070`) und pulsiert einmal. Eine Zierzeile „Bravo“ erscheint.
+
+**Zustände**
+- **Vorgegeben:** Elfenbein `#f3ead3`, Serif 700, Feld `#13233a`.
+- **Eigene Eingabe:** Messingblau-Gold `#e3c070`, Serif 400 kursiv. Sie unterscheidet sich von den Vorgaben durch Farbe und Schnitt.
+- **Ausgewählt (`ausgewaehlt`):** Feldfläche `#2b4468`. Dazu ein innerer Rahmen von 3 px in `#e3c070` (`box-shadow: inset`). Zeile, Spalte und Block des Felds bekommen eine leichte Tönung `#1a2f4d`.
+- **Konflikt (`konflikt`):** Feldfläche `#5a1f2b` (Weinrot), Ziffer `#ffb4a8`. Zusätzlich eine diagonale Streifung (`repeating-linear-gradient(45deg, #ffb4a822 0 4px, transparent 4px 8px)`) und eine 2-px-Unterstreichung der Ziffer, damit der Zustand nicht nur an der Farbe hängt. Er hat Vorrang vor „ausgewählt“, der gelbe Innenrahmen bleibt dabei sichtbar.
+- **Gelöst (`body.geloest`):** Felder gehen zu `#1d3a2f` (Dunkelgrün), Ziffern bleiben elfenbeinfarben.
+- **Fokus** der Buttons: 3 px Outline in `#e3c070`.
+
+## Geprüfte Optionen
+- **Art-déco-Lichtspielhaus (Nachtblau/Messing):** gewählt, weil es dunkel, symmetrisch, kontrastreich und mit reinem CSS machbar ist, und weil es sich deutlich von allen bisherigen Designs unterscheidet.
+- **Bauhaus/Swiss (Primärfarben, Raster):** verworfen, weil es den Klotzigen Knallfarben und dem Bauplan zu nahe kommt.
+- **Risograph (versetzte Farbschichten, Papierkorn):** verworfen. Die Fehlregistrierung ist auf kleinen Ziffern schlecht lesbar, und das Papierkorn bräuchte Bilddateien oder aufwendige Verläufe. Zudem liegt es nah an Terrazzo und Morgenzeitung.
+- **Memphis (bunte Muster):** verworfen. Es ähnelt Terrazzo und Neo-Brutalismus und lenkt vom Raster ab.
+- **Dunkles Bento-Grid (Trend 2026):** verworfen. Es passt eher zu Dashboards als zu einem einzelnen Brett und hat keinen eigenen Charakter.
+
+## Quellen
+- https://trends.daisyui.com/trend/art-deco/
+- https://trends.daisyui.com/trend/bauhaus/
+- https://trends.daisyui.com/trend/swiss-style/
+- https://trends.daisyui.com/trend/memphis-design/
+- https://trends.daisyui.com/editorial-art-inspired-ui/
+- https://k1aravollrath49a1.myportfolio.com/1920s-stealth-game-ui
+- https://chrislemke.github.io/website_designs/examples/Risograph.html
+- https://peopleofprint.com/graphic-design/super-abstract-series/
+- https://dev.to/riteshkokam/5-web-design-trends-of-2026-6cp
+- https://www.ionos.com/digitalguide/websites/web-design/webdesign-trends.md
+- https://clay.global/blog/web-design-guide/web-design-trends
+- https://www.html.it/articoli/metro-il-linguaggio-di-design-di-windows-8/
+
+Ich habe die Seiten nicht geöffnet, sondern nur die Suchergebnisse gesehen.

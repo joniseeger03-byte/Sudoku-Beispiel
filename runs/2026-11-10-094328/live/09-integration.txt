@@ -1,0 +1,20 @@
+
+▶ Bash: ls; cat board.js index.html; python ../../../../orchestrator/ui_check.py .; python test_spiel.py | tail -5
+
+
+▶ Bash: python engine.py neu leicht | head -c 150; grep -n "^import\|^from" engine.py; grep -c "E5484D\|FFB81C\|4ADE80" style.css
+
+# Integrationsbericht
+
+**Was war kaputt:** Nichts, das ich gefunden habe. Ich habe board.js, index.html und die Engine gegen den Vertrag gelesen. Ein leeres Feld ist auf beiden Seiten `0`. In board.js wird `0` als leerer Text dargestellt. `fetch('api/neu?stufe=…')` ist relativ zur Seite, wie verlangt. Die `data-*`-Attribute, die Klassen `selected`, `konflikt` und `geloest` und die `keydown`-Behandlung auf `document` stimmen mit dem Vertrag überein.
+
+**Was ich geändert habe:** Nichts. Ich habe keine Datei angefasst und keine git-Befehle ausgeführt.
+
+**Prüfung:**
+- `python ../../../../orchestrator/ui_check.py .`: Alle Prüfpunkte sind OK. Dazu gehören die 81 Felder, Klick, Tastatur, Konflikt, die Stufenwahl, das vollständige Ausfüllen und der Sieg.
+- `python test_spiel.py`: Alle Engine-Tests bestanden (A3, A4, A6, A16 und weitere).
+- `python engine.py neu leicht` gibt gültiges JSON aus.
+- `engine.py` importiert nur `json`, `random`, `sys` und `time`.
+- style.css enthält die Farben der Design-Richtung "Anzeigetafel bei Nacht" (Bernstein, Konfliktrot, Gelöst-Grün).
+
+**Nicht geprüft:** Ich habe nicht nachgesehen, wie das Spiel im Browser aussieht. Die Design-Vorgaben habe ich nur an den Farbwerten in style.css abgeglichen.

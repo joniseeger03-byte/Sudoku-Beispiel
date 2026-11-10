@@ -1,0 +1,155 @@
+:root {
+  --brett: min(calc(100vw - 24px), 520px);
+  --linie: #E9E4D4;
+  --zahl-vorgabe: #E9E4D4;
+  --zahl-eigen: #FFB81C;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: #14161A;
+  color: #E9E4D4;
+  font-family: "Helvetica Neue", Arial, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.geloest { --linie: #4ADE80; --zahl-vorgabe: #4ADE80; --zahl-eigen: #4ADE80; }
+
+.tafel {
+  width: var(--brett);
+  margin: 0 auto;
+  padding: 12px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kopf { display: flex; flex-direction: column; gap: 10px; }
+
+.kopfzeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid #3A4048;
+  padding-bottom: 8px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.status {
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #9AA0A8;
+  font-weight: 700;
+}
+body.geloest .status { color: #4ADE80; }
+
+.stufen { display: flex; }
+.stufen button {
+  flex: 1;
+  min-height: 44px;
+  background: transparent;
+  color: #E9E4D4;
+  border: 1px solid #3A4048;
+  margin-left: -1px;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color .12s, color .12s;
+}
+.stufen button:first-child { margin-left: 0; }
+.stufen button.aktiv {
+  background: #FFB81C;
+  color: #14161A;
+  border-color: #FFB81C;
+  font-weight: 700;
+}
+
+.brett {
+  width: var(--brett);
+  height: var(--brett);
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-rows: repeat(9, minmax(0, 1fr));
+  background: #1E2227;
+  border: 3px solid var(--linie);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.zelle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1E2227;
+  border: 1px solid #3A4048;
+  font-size: calc(var(--brett) / 9 * .6);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .12s;
+}
+.zelle.blockrechts { border-right: 3px solid var(--linie); }
+.zelle.blockunten { border-bottom: 3px solid var(--linie); }
+
+.zelle.vorgabe { color: var(--zahl-vorgabe); font-weight: 700; }
+.zelle.eigene { color: var(--zahl-eigen); font-weight: 600; }
+
+.zelle.peer { background-color: #2A2F36; }
+
+.zelle.selected {
+  background-color: #FFB81C;
+  color: #14161A;
+  box-shadow: inset 0 0 0 3px #E9E4D4;
+}
+
+.zelle.konflikt {
+  background-color: #4A1A1D;
+  background-image: repeating-linear-gradient(45deg, #E5484D55 0 3px, transparent 3px 8px);
+  color: #FF8A8E;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #E5484D;
+}
+.zelle.selected.konflikt {
+  background-color: #FFB81C;
+  color: #14161A;
+  box-shadow: inset 0 0 0 3px #E5484D, inset 0 0 0 5px #E9E4D4;
+}
+
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.ziffernfeld button {
+  min-height: 52px;
+  background: #262B31;
+  border: 1px solid #3A4048;
+  color: #FFB81C;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color .12s, color .12s;
+}
+.ziffernfeld button:active {
+  background: #FFB81C;
+  color: #14161A;
+}
+
+@media (hover: hover) {
+  .stufen button:not(.aktiv):hover { background: #262B31; }
+}

@@ -1,0 +1,81 @@
+
+▶ ToolSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+# Seekarte bei Nacht: Lotungszahlen auf Tiefenwasser
+
+## Entscheidung
+Die Seekarte hat gewonnen, weil sie von allen Richtungen am wenigsten wie ein Sudoku-Klon aussieht und trotzdem eine klare Lesbarkeit hat. Ihre Gestaltung folgt der Funktion: Zahlen sind Lotungen, Blöcke sind Seegebiete, und Gefahren werden in einer einzigen Warnfarbe markiert. Sie braucht nur Flächenfarben, Linien und Systemschriften, also reines HTML und CSS. Die bisherigen Designs sind helles Papier, Textil, Druck, Tafel oder Pflanzen. Eine dunkle Karte mit Tiefenstufen sieht deutlich anders aus als sie.
+
+## Vorgaben für die Oberfläche
+
+**Farben**
+- Seite (tiefes Wasser): `#0B1F2E`
+- Brettrahmen und Blocklinien: `#8FB8C9`, 3 px zwischen den 3×3-Blöcken
+- Feinlinien innerhalb der Blöcke: `#2E5266`, 1 px
+- Blöcke im Schachbrett-Wechsel (Tiefenstufen): `#12304A` und `#0F2A3F`
+- Vorgegebene Ziffern: `#F2EBD9` (Kartenpapier-Creme), fett
+- Eigene Eingaben: `#5FD0C4` (Türkis), normales Gewicht
+- Ausgewähltes Feld: Füllung `#E8C14A` bei etwa 30 % Deckkraft, 3 px Rand `#E8C14A`
+- Mitgehobene Zeile, Spalte und Block des gewählten Felds: `#1B4560`
+- Konflikt: Füllung `#5A1E26`, Ziffer `#FF6B5E`, Rand 2 px `#FF6B5E`, dazu ein kleines Dreieck oben rechts im Feld als Zweitkennzeichen (CSS-Rahmentrick), damit der Konflikt auch ohne Farbwahrnehmung erkennbar ist
+- Knöpfe: Fläche `#183B52`, Text `#F2EBD9`, aktive Stufe `#E8C14A` mit dunkler Schrift `#0B1F2E`
+- Gelöst (`body.geloest`): Seite wechselt auf `#0F3D3A`, Brettrahmen auf `#E8C14A`
+
+**Schrift**
+- Nur Systemschriften. Ziffern im Brett: `"Georgia", "Times New Roman", serif` (Lotungszahlen wirken wie gestochen). Bedienelemente: `system-ui, -apple-system, "Segoe UI", sans-serif`.
+- Ziffern im Brett: etwa 6,5 vw bei Smartphone-Breite, höchstens 2,2 rem. Notizen: Ziffern 0,6 rem in `#8FB8C9`, halbtransparent.
+
+**Anordnung**
+- Smartphone zuerst, einspaltig und von oben nach unten: schmale Titelzeile, Stufenwahl, Brett, Ziffernfeld.
+- Brett quadratisch, nutzt die volle Breite minus 12 px Rand, höchstens 520 px. Felder sind mindestens 36 px groß.
+- Stufenwahl: drei gleich breite Knöpfe in einer Reihe (leicht, mittel, schwer), mit einem Kompass-Punkt vor dem Namen als Zierde. Höhe mindestens 44 px.
+- Ziffernfeld unter dem Brett: Ziffern 1–9 in einer Reihe aus neun Knöpfen, darunter Löschen. Auf sehr schmalen Bildschirmen 5 + 4 Knöpfe. Knöpfe mindestens 44 × 44 px. Hinweis und Notizen stehen als zwei breite Knöpfe daneben.
+- Ab 800 px Breite: Brett links, Stufenwahl und Ziffernfeld in einer Spalte rechts.
+
+**Stimmung**
+Ruhig, nächtlich, konzentriert wie die Arbeit an einer Brückenkarte. Keine Schatten, keine Verläufe, nur flache Flächen und klare Linien. Auf dem Brett liegen keine Zierelemente, die Ziffern bleiben ungestört. Als einzige Dekoration trägt der Titel eine feine Linie mit kleinen Teilstrichen wie ein Kartenrand.
+
+**Zustände**
+- **Vorgegeben:** Creme, fett, Serifenschrift, Felder nicht anklickbar im Sinne einer Bearbeitung (Cursor normal).
+- **Eigene Eingabe:** Türkis, normales Gewicht. Sie ist von Vorgaben durch Farbe und Gewicht getrennt, also nicht allein durch den Farbton.
+- **Ausgewählt:** Goldene Füllung und goldener Rand. Die zugehörige Zeile, Spalte und der Block werden dezent in `#1B4560` aufgehellt.
+- **Konflikt (`konflikt`):** Dunkelrote Fläche, korallenrote Ziffer, Rand und Eckdreieck. Das Dreieck sichert die Erkennbarkeit ohne Farbe. Ist ein Konfliktfeld zugleich ausgewählt, bleibt der goldene Rand außen sichtbar und die rote Ziffer bleibt.
+
+**Kontrast (Richtwerte)**
+Creme auf `#12304A` etwa 11:1, Türkis auf `#12304A` etwa 7:1, Korallenrot auf `#5A1E26` etwa 4,6:1. Das reicht für große Ziffern.
+
+## Geprüfte Optionen
+- **Seekarte bei Nacht (gewählt):** Dunkle Tiefenwasserflächen, Lotungsziffern und eine Warnfarbe. Gewählt, weil Blöcke durch Tiefenstufen und Rahmenlinien sehr klar trennbar sind und die Richtung neu gegenüber den bisherigen Designs ist.
+- **Schweizer Raster (Internationaler Typografischer Stil):** Strenges Raster, serifenlose Schrift, viel Weißraum, Rot-Schwarz-Weiß. Verworfen, weil sie zu nahe an den bereits genutzten hellen Flächen-Designs wie „Klares Blau“ liegt und wenig Eigenes bringt.
+- **Neobrutalismus:** Dicke schwarze Rahmen, harte Versatzschatten, grelle Flächen. Verworfen, weil die vielen Schatten und Rahmen die 81 Felder auf dem kleinen Bildschirm überladen und die Blockgrenzen weniger deutlich werden.
+- **Dunkler Glas-Look (Liquid Glass, Trend 2026):** Durchscheinende Flächen mit Unschärfe. Verworfen, weil Unschärfe und Transparenz die Kontraste der Ziffern schwächen und sich ohne Hintergrundbild schlecht tragen lassen.
+- **Bauhaus-Primärformen:** Rot, Gelb, Blau und geometrische Grundformen. Verworfen, weil starke Farbflächen mit den Zustandsfarben (ausgewählt, Konflikt) kollidieren würden.
+
+## Quellen
+- https://trends.daisyui.com/ui-design-trends-2026/
+- https://musemind.agency/blog/ui-design-trends
+- https://www.hostinger.com/uk/tutorials/web-design-trends/
+- https://posterhouse.org/exhibition/the-swiss-grid/
+- https://en.wikipedia.com/wiki/Swiss_Style
+- https://readingdesign.org/modernist-grid
+- https://www.nngroup.com/articles/neobrutalism/
+- https://webflow.com/blog/10-brutalist-websites
+- https://madegooddesigns.com/neobrutalism-web-design/
+- https://repository.library.noaa.gov/view/noaa/49552/noaa_49552_DS1.pdf
+- https://www.hydro.gov.au/factsheets/FS_PNC-Understanding_Paper_Nautical_Chart_symbology.pdf
+- https://archive.org/details/McGillLibrary-rbsc_map_bayfield-033-18914
+- https://paddlinglight.com/articles/technique/navigation-read-a-marine-chart-part-2
+
+Hinweis: Ich habe nur Suchergebnisse gesehen, keine Seite per WebFetch geöffnet.

@@ -1,0 +1,169 @@
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #E9E3D6;
+  background-image: repeating-linear-gradient(
+    90deg, transparent 0, transparent 9px, #E3DCCB 9px, #E3DCCB 10px);
+  color: #2B2B29;
+  font-family: "Hiragino Sans", "Segoe UI", system-ui, sans-serif;
+  transition: background-color .4s;
+}
+
+body.geloest {
+  background-color: #DDE6CF;
+  background-image: none;
+}
+
+.garten {
+  width: min(100%, 564px);
+  margin: 0 auto;
+  padding: 16px 12px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.titel {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 400;
+  font-variant: small-caps;
+  letter-spacing: .5em;
+  text-indent: .5em;
+  text-transform: lowercase;
+}
+
+/* Steine (Buttons) */
+.stein {
+  min-height: 48px;
+  border: 0;
+  border-radius: 6px;
+  background: #DAD3C2;
+  color: #2B2B29;
+  font: inherit;
+  font-variant: small-caps;
+  letter-spacing: .15em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.stein:focus-visible { outline: 3px solid #4F6B3A; outline-offset: 2px; }
+
+.stufen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stufe { font-size: 16px; }
+
+.stufe.aktiv {
+  background: #4A4A47;
+  color: #F5F1E7;
+}
+
+/* Brett */
+.brett {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  background: #F5F1E7;
+  border: 3px solid #4A4A47;
+  transition: border-color .4s;
+}
+
+body.geloest .brett { border-color: #4F6B3A; }
+
+.feld {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  background: #F5F1E7;
+  border-right: 1px solid #CFC8B6;
+  border-bottom: 1px solid #CFC8B6;
+  font-size: clamp(18px, 6vw, 32px);
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+
+.feld.blockrechts { border-right: 3px solid #4A4A47; }
+.feld.blockunten { border-bottom: 3px solid #4A4A47; }
+
+body.geloest .feld.blockrechts { border-right-color: #4F6B3A; }
+body.geloest .feld.blockunten { border-bottom-color: #4F6B3A; }
+
+.feld.vorgabe { color: #2B2B29; font-weight: 600; }
+.feld.eigen { color: #2F4F7A; font-weight: 400; }
+
+.feld.bezug { background: #EBEBD9; }
+
+.feld.konflikt {
+  background: #F6D5CC;
+  color: #C8381F;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #C8381F;
+}
+
+.feld.selected {
+  background: #B9CDA0;
+  box-shadow: inset 0 0 0 3px #4F6B3A;
+}
+
+.feld.selected.konflikt {
+  background: #B9CDA0;
+  box-shadow: inset 0 0 0 3px #4F6B3A, inset 0 0 0 5px #C8381F;
+}
+
+/* Meldung */
+.meldung {
+  min-height: 1.6em;
+  text-align: center;
+  font-size: 17px;
+  letter-spacing: .08em;
+  color: #4F6B3A;
+}
+
+body.geloest .meldung {
+  font-weight: 600;
+  padding: 10px;
+  background: #F5F1E7;
+  border: 3px solid #4F6B3A;
+}
+
+/* Ziffernfeld: 5 + 4 + Löschen */
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  max-width: 540px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.ziffer { font-size: 22px; font-variant: normal; letter-spacing: 0; min-height: 52px; }
+
+.ziffer.loeschen {
+  font-size: 14px;
+  font-variant: small-caps;
+  letter-spacing: .1em;
+}
+
+@media (min-width: 700px) {
+  .garten { padding-top: 32px; }
+}

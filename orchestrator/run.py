@@ -8,7 +8,6 @@ import argparse
 import ast
 import json
 import os
-import random
 import re
 import shutil
 import stat
@@ -27,16 +26,8 @@ ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
 WORK = ROOT / "arbeitsbereich"
 TARGET = WORK / "projekt"
-DEMO = Path(__file__).resolve().parent / "demo"
 GIT = ["git", "-c", "user.name=Agentenlauf", "-c", "user.email=agent@localhost"]
 
-# Demo: Diese Code-Dateien spielt das "Modell" als Antwort zurück, jeweils als Codeblock.
-DEMO_CODE = {
-    "engine": ["engine_fehlerhaft.py"],
-    "korrektur": ["engine.py"],
-    "ui": ["index.html", "board_fehlerhaft.js", "style.css"],
-    "tests": ["test_spiel.py"],
-}
 SPRACHE = {".py": "python", ".html": "html", ".js": "javascript", ".css": "css"}
 
 
@@ -81,8 +72,8 @@ def urteil(text, erlaubt):
 # ---------------------------------------------------------------- Ein Lauf
 
 class Lauf:
-    def __init__(self, lauf_id, demo):
-        self.id, self.demo = lauf_id, demo
+    def __init__(self, lauf_id):
+        self.id = lauf_id
         self.dir = RUNS / lauf_id
         self.wt = WORK / "worktrees" / lauf_id
         self.lock = threading.Lock()
@@ -157,7 +148,7 @@ class Lauf:
             aid = f"{self.zaehler:02d}-{knoten}"
         rec = {
             "id": aid, "knoten": knoten, "runde": runde, "status": "run", "start": time.time(),
-            "anbieter": anbieter, "modell": modell, "simuliert": self.demo,
+            "anbieter": anbieter, "modell": modell,
             "prompt_datei": prompt_datei, "prompt": prompt_text, "kontext": kontext,
             "anfrage": agents.anfrage(cfg, anbieter, nachricht, werkzeuge=werkzeuge),
         }
@@ -166,9 +157,7 @@ class Lauf:
                    aufruf=aid, runde=runde, anbieter=anbieter, modell=modell)
         out = self.live(aid)
         try:
-            if self.demo:
-                text = demo_antwort(knoten, runde, out)
-            elif agents.ist_claude(cfg, anbieter):
+            if agents.ist_claude(cfg, anbieter):
                 text, rec["kosten_usd"] = agents.claude_call(cfg, anbieter, nachricht, out, cwd or self.dir, werkzeuge)
             else:
                 def wechsel(von, nach, grund):
@@ -227,24 +216,6 @@ class Lauf:
         if git("status", "--porcelain", cwd=pfad).stdout.strip():
             git("commit", "-m", msg, cwd=pfad)
             self.harness(knoten, f"Commit „{msg}“", befehl=f'git commit -m "{msg}"')
-
-
-def demo_antwort(knoten, runde, out):
-    """Demo: vorbereitete Antwort statt Modell. Alles danach läuft genauso wie echt."""
-    datei = next((DEMO / "texte" / n for n in (f"{knoten}-r{runde}.md", f"{knoten}.md") if (DEMO / "texte" / n).exists()), None)
-    if datei:
-        text = datei.read_text(encoding="utf-8")
-    else:
-        text = "\n\n".join(f"```{SPRACHE[Path(f).suffix]}\n{(DEMO / 'code' / f).read_text(encoding='utf-8').strip()}\n```"
-                           for f in DEMO_CODE[knoten])
-    time.sleep(1.2)  # "denkt nach"
-    i = 0
-    while i < len(text):
-        n = random.randint(6, 16)
-        out(text[i:i + n])
-        i += n
-        time.sleep(0.035)
-    return text
 
 
 # ---------------------------------------------------------------- Bausteine
@@ -328,7 +299,7 @@ def korrektur(lauf, cfg, engine, integ, runde):
     finally:
         kopie.unlink(missing_ok=True)
         shutil.rmtree(engine / "__pycache__", ignore_errors=True)
-    if lauf.demo or not agents.ist_claude(cfg, cfg["rollen"]["korrektur"]):
+    if not agents.ist_claude(cfg, cfg["rollen"]["korrektur"]):
         lauf.uebernimm("korrektur", text, engine, ["engine.py"], ["engine.py"])  # ohne Werkzeuge: Code steckt in der Antwort
     lauf.commit("korrektur", engine, f"Korrektur, Runde {runde}")
     lauf.event("korrektur", "ok", "engine.py korrigiert", aufruf=aid)
@@ -401,17 +372,17 @@ def abnahme(lauf, integ, runde, zeitlimit):
 
 # ---------------------------------------------------------------- Der Ablauf
 
-def start(demo):
+def start():
     load_env()
     cfg = load_cfg()
     if not shutil.which("git"):
         sys.exit("git wurde nicht gefunden. Bitte installieren.")
-    lauf = Lauf(datetime.now().strftime("%Y-%m-%d-%H%M%S"), demo)
+    lauf = Lauf(datetime.now().strftime("%Y-%m-%d-%H%M%S"))
     lauf.dir.mkdir(parents=True)
     lauf.wt.mkdir(parents=True)
-    befehl = "python orchestrator/run.py" + (" --demo" if demo else "")
+    befehl = "python orchestrator/run.py"
     (lauf.dir / "start.json").write_text(json.dumps({
-        "befehl": befehl, "modus": "demo" if demo else "live", "zeit": datetime.now().isoformat(timespec="seconds"),
+        "befehl": befehl, "modus": "live", "zeit": datetime.now().isoformat(timespec="seconds"),
         "max_runden": cfg["max_runden"],
         "rollen": {k: {"anbieter": a, "modell": cfg["anbieter"][a]["modell"]} for k, a in cfg["rollen"].items()},
     }, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -517,8 +488,6 @@ def ablauf(lauf, cfg):
     bericht = None
     for runde in range(1, max_runden + 1):
         text, aid = lauf.frage(cfg, "integration", runde, nachtrag=bericht, cwd=integ)
-        if lauf.demo:  # steht in der Demo für die Edit-Aufrufe des Agenten
-            shutil.copy(DEMO / "code" / "board.js", integ / "board.js")
         # Harness-Regel: Der Integrations-Agent darf die Tests nicht anfassen
         if git("diff", "--quiet", "HEAD", "--", "test_spiel.py", cwd=integ, check=False).returncode:
             git("checkout", "HEAD", "--", "test_spiel.py", cwd=integ)
@@ -603,7 +572,7 @@ def approve(lauf_id):
     lauf_id = lauf_id or offen[-1]
     if lauf_id not in offen:
         sys.exit(f"Lauf {lauf_id} wartet nicht auf Freigabe. Wartend: {', '.join(offen)}")
-    lauf = Lauf(lauf_id, False)
+    lauf = Lauf(lauf_id)
     zweig = f"agent/{lauf.id}/integration"
     if git("rev-parse", "--verify", "--quiet", zweig, check=False).returncode != 0:
         sys.exit(f"Branch {zweig} fehlt, der Entwurf wurde wohl schon gelöscht.")
@@ -623,8 +592,10 @@ def approve(lauf_id):
         sys.exit(f"Übernahme nach main nicht möglich, nichts geändert:\n{e}")
     lauf.harness("freigabe", "Stand des Laufs als neuer main übernommen",
                  befehl=f"git merge -s ours --no-commit {zweig} && git read-tree --reset -u {zweig} && git commit")
-    for n in ("engine", "ui", "tests", "integration"):
-        git("worktree", "remove", "--force", str(lauf.wt / n), check=False)
+    # Aufräumen: Die Commits stecken jetzt in der Historie von main, Worktrees und Branches braucht niemand mehr
+    zweige = entwurf_loeschen(lauf)
+    lauf.harness("freigabe", f"Aufgeräumt: {len(zweige)} Branches und Worktrees, die Commits bleiben über main erhalten",
+                 befehl=f"git worktree remove --force … && git branch -D agent/{lauf.id}/*")
     lauf.schreibe("09-freigabe.md", "# Freigabe\n\nDer Merge in `main` ist erfolgt.\n")
     lauf.event("freigabe", "ok", "Merge in main freigegeben", datei="09-freigabe.md")
     print(f"Fertig. Das Ergebnis liegt in {TARGET}")
@@ -639,17 +610,8 @@ def schreibbar(fn, pfad, _):
     fn(pfad)
 
 
-def verwerfen(lauf_id):
-    """Gegenstück zur Freigabe: löscht den Entwurf (Worktrees, Branches, Ergebnis). Das Protokoll in runs/ bleibt.
-    Geht für wartende und für abgebrochene Läufe."""
-    keine_demo(lauf_id)
-    offen = ohne_entscheidung()
-    if not offen:
-        sys.exit("Kein Lauf wartet auf eine Entscheidung.")
-    lauf_id = lauf_id or offen[-1]
-    if lauf_id not in offen:
-        sys.exit(f"Lauf {lauf_id} wartet nicht auf eine Entscheidung. Offen: {', '.join(offen)}")
-    lauf = Lauf(lauf_id, False)
+def entwurf_loeschen(lauf):
+    """Entfernt Worktrees, Worktree-Ordner und Branches eines Laufs. Gibt die gelöschten Branches zurück."""
     if lauf.wt.exists():
         for wt in sorted(p for p in lauf.wt.iterdir() if p.is_dir()):
             git("worktree", "remove", "--force", str(wt), check=False)
@@ -658,9 +620,23 @@ def verwerfen(lauf_id):
     zweige = git("branch", "--list", f"agent/{lauf.id}/*", "--format=%(refname:short)", check=False).stdout.split()
     if zweige:
         git("branch", "-D", *zweige)
-    if (lauf.dir / "ergebnis").exists():
-        shutil.rmtree(lauf.dir / "ergebnis", onerror=schreibbar)
-    lauf.harness("freigabe", f"Entwurf gelöscht: {len(zweige)} Branches, Worktrees und Ergebnis",
+    return zweige
+
+
+def verwerfen(lauf_id):
+    """Gegenstück zur Freigabe: löscht den Entwurf im Arbeitsbereich (Worktrees, Branches).
+    runs/<lauf> bleibt vollständig, samt Ergebnis: Es ist ein Beispiel und als Demo abspielbar.
+    Geht für wartende und für abgebrochene Läufe."""
+    keine_demo(lauf_id)
+    offen = ohne_entscheidung()
+    if not offen:
+        sys.exit("Kein Lauf wartet auf eine Entscheidung.")
+    lauf_id = lauf_id or offen[-1]
+    if lauf_id not in offen:
+        sys.exit(f"Lauf {lauf_id} wartet nicht auf eine Entscheidung. Offen: {', '.join(offen)}")
+    lauf = Lauf(lauf_id)
+    zweige = entwurf_loeschen(lauf)
+    lauf.harness("freigabe", f"Entwurf gelöscht: {len(zweige)} Branches und Worktrees",
                  befehl=f"git worktree remove --force … && git branch -D agent/{lauf.id}/*")
     lauf.schreibe("09-freigabe.md", "# Verworfen\n\nDer Entwurf wurde gelöscht. Nichts wurde nach `main` übernommen.\n")
     lauf.event("freigabe", "fail", "Verworfen, nichts nach main übernommen", datei="09-freigabe.md")
@@ -668,15 +644,21 @@ def verwerfen(lauf_id):
 
 
 def zuruecksetzen():
-    print(f"Löscht alle Läufe in {RUNS} und den Arbeitsbereich {WORK} (inklusive Git-Branches dort).")
-    import wiedergabe
-    weg = [a["id"] for a in wiedergabe.aufzeichnungen() if not a["gespeichert"]]
-    if weg:
-        print(f"Achtung: {len(weg)} Demo-Aufzeichnungen liegen nur in runs/ und gehen verloren: {', '.join(weg)}\n"
-              "Zum Behalten vorher im Dashboard unter „Lauf ▾“ auf „Als Demo behalten“ klicken.")
+    """Räumt den Arbeitsbereich (Zielprojekt, Worktrees, Branches) und die Demo-Wiedergaben ab.
+    Die Läufe in runs/ sind die Beispiele des Projekts, liegen im Repo und bleiben."""
+    demos = [p for p in RUNS.iterdir() if p.is_dir() and ist_wiedergabe(p)]
+    offen = ohne_entscheidung()
+    print(f"Löscht den Arbeitsbereich {WORK} (Zielprojekt mit allen Freigaben, Worktrees, Branches)"
+          f" und {len(demos)} Demo-Wiedergaben. Die Läufe in runs/ bleiben.")
+    if offen:
+        print(f"{len(offen)} offene Läufe verlieren ihren Entwurf und werden als verworfen markiert: {', '.join(offen)}")
     if input("Wirklich? Tippe ja: ").strip().lower() != "ja":
         sys.exit("Abgebrochen.")
-    for d in [*(p for p in RUNS.iterdir() if p.is_dir()), WORK]:
+    for lauf_id in offen:
+        lauf = Lauf(lauf_id)
+        lauf.schreibe("09-freigabe.md", "# Verworfen\n\nDer Arbeitsbereich wurde zurückgesetzt. Nichts wurde nach `main` übernommen.\n")
+        lauf.event("freigabe", "fail", "Beim Zurücksetzen verworfen", datei="09-freigabe.md")
+    for d in [*demos, WORK]:
         if d.exists():
             shutil.rmtree(d, onerror=schreibbar)
     print("Zurückgesetzt.")
@@ -685,11 +667,10 @@ def zuruecksetzen():
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser()
-    p.add_argument("--demo", action="store_true", help="Skript-Demo mit vorbereiteten Antworten (die Demo im Dashboard spielt stattdessen Aufzeichnungen ab, siehe wiedergabe.py)")
     p.add_argument("--check", action="store_true", help="Keys und Modelle mit einer kurzen Anfrage testen")
     p.add_argument("--freigabe", nargs="?", const="", metavar="LAUF", help="wartenden Lauf nach main übernehmen")
     p.add_argument("--verwerfen", nargs="?", const="", metavar="LAUF", help="wartenden Lauf verwerfen, Entwurf löschen")
-    p.add_argument("--zuruecksetzen", action="store_true", help="alle Läufe und den Arbeitsbereich löschen")
+    p.add_argument("--zuruecksetzen", action="store_true", help="Arbeitsbereich und Demo-Wiedergaben löschen, runs/ bleibt")
     a = p.parse_args()
     RUNS.mkdir(exist_ok=True)
     if a.check:
@@ -701,4 +682,4 @@ if __name__ == "__main__":
     elif a.zuruecksetzen:
         zuruecksetzen()
     else:
-        start(a.demo)
+        start()

@@ -1,0 +1,36 @@
+
+▶ Glob: *
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\arbeitsbereich\worktrees\2026-11-10-123731\integration\board.js
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\arbeitsbereich\worktrees\2026-11-10-123731\integration\index.html
+
+
+▶ Bash: python ../../../../orchestrator/ui_check.py .
+
+
+▶ Bash: python test_spiel.py
+
+
+▶ Grep: konflikt|geloest|\.selected|box-shadow: 6px|\.haken|\.bereich|\.gleich
+
+# Integrationsbericht
+
+## Was war kaputt
+Nichts. Ich habe `board.js`, `index.html` und `style.css` gegen den Vertrag geprüft und keine Unstimmigkeit gefunden:
+- Ein leeres Feld ist auf beiden Seiten `0`. Die Engine liefert `0` für leer, und `board.js` schreibt dafür einen leeren Text ins Feld.
+- Die `data-*`-Attribute im Vertrag stehen alle in der Oberfläche. Das sind `data-index`, `data-digit` (1–9 und 0 für Löschen) und `data-stufe`.
+- Die Klassen `selected`, `konflikt` und `body.geloest` werden gesetzt.
+- Die Oberfläche lädt das Rätsel per `fetch('api/neu?stufe=…')`, relativ zur Seite.
+- Das Design (Risodruck) ist in `style.css` umgesetzt. Ich habe nur stichprobenartig nach dem Schatten `6px 6px 0`, dem Häkchen im Titel und den Konflikt- und Auswahlregeln gesucht. Sie sind vorhanden. Das Aussehen habe ich nicht im Browser angesehen.
+
+## Was ich geändert habe
+Keine Datei. Es war keine Reparatur nötig.
+
+## Prüfergebnis
+- `python ../../../../orchestrator/ui_check.py .`: alle 26 Prüfungen bestanden. Dazu gehören Raster, Auswahl, Eingabe per Klick und Tastatur, Konflikte, Stufenwechsel, Vorgaben-Schutz und das vollständige Lösen mit `geloest`.
+- `python test_spiel.py`: "Alle Tests bestanden" (A1, A2, A3).
+
+Nicht geprüft habe ich A12 (Ladezeit unter 500 ms) und A13 (Smartphone-Bedienung), weil ich dafür keinen Messaufbau hatte. Auf A14 deutet `board.js` hin, denn es setzt für jedes Feld ein `aria-label`. Das habe ich nicht im Browser nachgeprüft.

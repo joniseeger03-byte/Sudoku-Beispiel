@@ -1,0 +1,203 @@
+:root {
+  --papier: #F4EEDF;
+  --flaeche: #FBF7EC;
+  --blau: #1F2A6B;
+  --koralle: #FF5A4D;
+  --teal: #0B7A72;
+  --fehler: #B3122A;
+  --gelb: #FFD84D;
+  --linie: rgba(31, 42, 107, 0.25);
+  --brett: min(94vw, 440px);
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--blau);
+  background-color: var(--papier);
+  background-image: repeating-radial-gradient(circle at 0 0, rgba(31, 42, 107, 0.035) 0 1px, transparent 1px 5px);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.heft {
+  width: var(--brett);
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 14px 0 28px;
+}
+
+.titel {
+  margin: 0 0 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-variant: small-caps;
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: 0.14em;
+  text-align: left;
+  line-height: 1.1;
+}
+.haken::after { content: ""; }
+body.geloest .haken::after { content: " \2713"; color: var(--teal); }
+
+/* Stufen */
+.stufen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.stufe {
+  min-height: 44px;
+  padding: 6px 4px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-variant: small-caps;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  color: var(--blau);
+  background: transparent;
+  border: 2px solid var(--blau);
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.stufe.aktiv {
+  background: var(--blau);
+  color: var(--papier);
+}
+
+/* Brett */
+.brett {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  width: var(--brett);
+  height: var(--brett);
+  background: var(--flaeche);
+  border: 3px solid var(--blau);
+  box-shadow: 6px 6px 0 var(--koralle);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+body.geloest .brett {
+  background: var(--gelb);
+  box-shadow: 6px 6px 0 var(--blau);
+}
+
+.feld {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  font-size: calc(var(--brett) / 15);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background-color: transparent;
+  border-right: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+  cursor: pointer;
+}
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+.feld.br { border-right: 3px solid var(--blau); }
+.feld.bb { border-bottom: 3px solid var(--blau); }
+
+.feld.vorgabe {
+  color: var(--blau);
+  font-weight: 700;
+  background-image: radial-gradient(rgba(31, 42, 107, 0.06) 1px, transparent 1.5px);
+  background-size: 5px 5px;
+}
+.feld.eigene {
+  color: var(--teal);
+  font-weight: 500;
+}
+
+.feld.bereich { background-color: rgba(255, 90, 77, 0.10); }
+
+.feld.gleich {
+  text-decoration: underline;
+  text-decoration-color: var(--koralle);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.feld.selected {
+  background-color: rgba(255, 90, 77, 0.30);
+  box-shadow: inset 0 0 0 3px var(--koralle);
+  animation: ein 120ms ease-out;
+}
+
+.feld.konflikt {
+  background-color: rgba(255, 90, 77, 0.35);
+  color: var(--fehler);
+  font-weight: 700;
+  outline: 2px dashed var(--fehler);
+  outline-offset: -5px;
+}
+
+@keyframes ein {
+  from { background-color: transparent; box-shadow: inset 0 0 0 0 var(--koralle); }
+}
+
+/* Meldung */
+.meldung {
+  min-height: 1.6em;
+  margin: 18px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--fehler);
+}
+body.geloest .meldung {
+  color: var(--blau);
+  background: var(--gelb);
+  border: 2px solid var(--blau);
+  border-radius: 2px;
+  padding: 6px 8px;
+}
+
+/* Ziffernfeld */
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.ziffer {
+  min-height: 52px;
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--blau);
+  background: var(--flaeche);
+  border: 2px solid var(--blau);
+  border-radius: 2px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ziffer:active { background: var(--koralle); }
+.ziffer.loeschen { color: var(--fehler); }
+
+.stufe:focus-visible, .ziffer:focus-visible {
+  outline: 3px solid var(--koralle);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feld.selected { animation: none; }
+}
+
+@media (max-width: 380px) {
+  .titel { font-size: 1.6rem; }
+  .stufe { font-size: 1rem; }
+}

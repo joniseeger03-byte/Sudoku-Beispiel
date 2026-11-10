@@ -1,0 +1,52 @@
+{
+ "befehl": "python orchestrator/run.py",
+ "modus": "live",
+ "zeit": "2026-11-10T13:21:28",
+ "max_runden": 3,
+ "rollen": {
+  "recherche_a": {
+   "anbieter": "openrouter",
+   "modell": "google/gemma-3-27b-it"
+  },
+  "recherche_b": {
+   "anbieter": "openrouter",
+   "modell": "google/gemma-3-27b-it"
+  },
+  "pruefung": {
+   "anbieter": "groq",
+   "modell": "openai/gpt-oss-120b"
+  },
+  "spezifikation": {
+   "anbieter": "groq",
+   "modell": "openai/gpt-oss-120b"
+  },
+  "design": {
+   "anbieter": "claude",
+   "modell": "sonnet"
+  },
+  "engine": {
+   "anbieter": "claude",
+   "modell": "sonnet"
+  },
+  "ui": {
+   "anbieter": "claude",
+   "modell": "sonnet"
+  },
+  "tests": {
+   "anbieter": "groq",
+   "modell": "openai/gpt-oss-120b"
+  },
+  "testcheck": {
+   "anbieter": "claude",
+   "modell": "sonnet"
+  },
+  "korrektur": {
+   "anbieter": "claude",
+   "modell": "sonnet"
+  },
+  "integration": {
+   "anbieter": "claude",
+   "modell": "sonnet"
+  }
+ }
+}

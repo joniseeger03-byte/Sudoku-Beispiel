@@ -1,0 +1,54 @@
+# Kartonbrett-Brutalismus: dicke Kanten, harte Schatten, Zitronengelb
+
+## Entscheidung
+Die Richtung heißt Tactile Brutalism (Neo-Brutalismus). Dicke schwarze Linien, flache Farbflächen und harte Versatzschatten sind genau das, was das Spiel braucht: Die 3×3-Blöcke sind sofort sichtbar, und Auswahl und Konflikt lassen sich über Flächenfarbe und Rahmen unterscheiden, nicht nur über Farbe. Die Umsetzung braucht nur HTML und CSS mit Systemschriften. Die Richtung ist hell und flächig. Das unterscheidet sie von den bisherigen Entwürfen (Art déco, Anzeigetafel bei Nacht, Seekarte bei Nacht, Risodruck, Trockengarten).
+
+## Vorgaben für die Oberfläche
+**Farben**
+- Seitenhintergrund: Zitronengelb `#FFE45C`.
+- Brett-Grundfläche und Zellen: Weiß-Creme `#FFFDF4`.
+- Tinte, Linien und Rahmen: Schwarz `#111111`.
+- Akzent für Stufenwahl und Ziffernfeld: Mintgrün `#7BE0B0`, aktive Stufe Flieder `#B9A6FF`.
+- Gelöst: Mint `#7BE0B0` als Brettfläche.
+
+**Schrift**
+- Nur Systemschriften: `"Arial Black", "Segoe UI", system-ui, sans-serif`. Für die Überschriften ist der Fettschnitt 900 mit Großbuchstaben und enger Laufweite vorgesehen.
+- Ziffern im Brett in `system-ui` mit Gewicht 800. Die Größe richtet sich nach der Zellbreite (ca. 55 % der Zellhöhe).
+
+**Anordnung**
+- Smartphone im Hochformat, einspaltig. Oben ein Titelbalken mit schwarzem 3-px-Rahmen.
+- Darunter die Stufenwahl als drei gleich breite Knöpfe nebeneinander. Jeder hat einen 3-px-Rahmen und einen harten Schatten von 4 px nach rechts unten, ohne Weichzeichnung (`box-shadow: 4px 4px 0 #111`). Der aktive Knopf ist flieder und sitzt 2 px tiefer in seinem Schatten.
+- Das Brett folgt, quadratisch und fast so breit wie der Bildschirm. Es hat einen 4-px-Außenrahmen und einen harten Schatten von 8 px.
+- Zellen haben 1-px-Linien in `#111111` bei 35 % Deckkraft.
+- Die 3×3-Blöcke sind durch 4-px-Linien in `#111111` getrennt (am einfachsten über `border-right` und `border-bottom` auf jeder dritten Zelle).
+- Unter dem Brett liegt das Ziffernfeld als 5×2-Raster. Die Ziffern 1–9 und das Löschen-Feld sind mindestens 48 px groß, mintgrün, mit 3-px-Rahmen und hartem Schatten. Beim Antippen verschwindet der Schatten, und der Knopf rutscht 4 px nach unten rechts.
+
+**Stimmung**
+Handfest, laut und freundlich, wie ein Stück Pappe mit Filzstift. Es gibt keine Verläufe, keine Weichzeichnung und keine Transparenz außer bei den feinen Zelllinien.
+
+**Zustände**
+- **Vorgegeben:** Ziffer in Schwarz `#111111`, Gewicht 900, auf cremefarbener Zelle `#FFFDF4`.
+- **Eigene Eingabe:** Ziffer in Kobaltblau `#1F3DFF`, Gewicht 600, auf cremefarbener Zelle. Sie unterscheidet sich von den vorgegebenen Ziffern durch Farbe und Gewicht.
+- **Ausgewählt (`focus`):** Zelle mit Fläche in Fliederviolett `#B9A6FF` und innerem schwarzem Rahmen von 3 px (`outline: 3px solid #111; outline-offset: -3px`).
+- **Mitgehobene Zeile, Spalte und Block der Auswahl:** helles Gelb `#FFF3A8`.
+- **Konflikt (`konflikt`):** Zellfläche Koralle `#FF5A4F`, Ziffer Schwarz, zusätzlich diagonale schwarze Schraffur (`repeating-linear-gradient(45deg, #11111133 0 4px, transparent 4px 8px)`). Der Konflikt ist so auch ohne Farbwahrnehmung erkennbar. Steht ein Konflikt auf der gewählten Zelle, behält sie ihren schwarzen Rahmen.
+- **Gelöst (`body.geloest`):** Brettfläche Mint `#7BE0B0`, Titelbalken zeigt „GESCHAFFT“, Brettschatten wechselt auf Flieder.
+
+## Geprüfte Optionen
+- **Tactile Brutalism (gewählt):** Dicke Kanten und harte Schatten machen Blöcke, Auswahl und Konflikt auf kleinen Bildschirmen klar. Er ist rein mit CSS und Systemschriften umsetzbar und hell, also deutlich anders als die bisherigen Entwürfe.
+- **Bauhaus-Primärfarben und Swiss-Raster:** Rot, Gelb und Blau auf Weiß mit Grotesk-Schrift sind sehr klar und gut lesbar. Verworfen, weil die Suche nichts Brauchbares zur Spielgestaltung ergab und die Flächenlogik der Riso-Zweifarbigkeit zu nahe kommt.
+- **Cyanotypie und Blaupause (Preußischblau auf Weiß, feine Linien):** Das Aussehen ist architektonisch und ruhig. Verworfen, weil feine Linien auf dem Smartphone schlecht tragen und das Blau der Seekarte bei Nacht zu ähnlich ist.
+- **Papier- und Körnungsoptik („Organic Brutalism“):** Sie wirkt handgemacht. Verworfen, weil Körnung ohne Bilddateien nur mit Verläufen nachzubauen ist und die Ziffern unruhiger würden.
+
+## Quellen
+- https://fireart.studio/blog/the-best-web-design-trends/
+- https://barnimages.com/blog/tips/web-design-trends/
+- https://pixso.net/articles/neo-brutalism-design/
+- https://www.designrush.com/agency/website-design-development/trends/web-design-trends
+- https://minesweeperblast.pages.dev/minesweeper-accessibility
+- https://cdn.jsdelivr.net/npm/@wrongstack/core@0.295.1/design-kits/bauhaus/KIT.md
+- https://outout.itch.io/bauhaus-match
+- https://www.Wikipedia.com/wiki/Architectural_reprography
+- https://www.krea.ai/moodboard-feed/architectural-cyanotype-abstraction-2606067f-74f1-577f-898b-eb1f3f8d582a
+
+Ich habe die Seiten nicht geöffnet. Die Quellen stammen aus den Suchergebnissen. Die Gestaltungsdetails (Hexwerte, Maße, Zustände) habe ich selbst festgelegt.

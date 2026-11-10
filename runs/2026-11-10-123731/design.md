@@ -1,0 +1,59 @@
+# Risodruck-Zweifarbheft
+
+## Entscheidung
+Das Zweifarbdruck-Prinzip des Risographen (zwei Tinten auf ungestrichenem Papier, die sich beim Übereinanderdrucken mischen) ist hell und warm, und es passt zu einem Rätselheft. Die vorherigen Designs waren alle dunkel und nächtlich. Dieses ist dagegen ein helles Papierdesign. Jeder Zustand bekommt eine eigene Tintenfarbe, die sich auch bei kleiner Schrift gut unterscheiden lässt. Das Ganze geht mit reinem CSS: Flächen, `mix-blend-mode: multiply`, ein versetzter Schatten als Fehlregister und Systemschriften.
+
+## Vorgaben für die Oberfläche
+
+**Farben**
+- Papier (Seitenhintergrund): `#F4EEDF`; Brettfläche etwas heller: `#FBF7EC`
+- Haupttinte Blau (Text, Linien, Vorgaben): `#1F2A6B`
+- Zweittinte Koralle/Fluor-Rot (Auswahl, Akzente): `#FF5A4D`
+- Konflikt: Überdruck aus Koralle auf Blau, Füllung `#FF5A4D` bei 35 % Deckkraft, Ziffer in `#B3122A`, dazu eine unterbrochene Kontur
+- Eigene Eingabe: Teal `#0E8F86`
+- Gelöst: Gelbtinte `#FFD84D` als Flächenfüllung des Bretts
+- Feine Zellenlinien `#1F2A6B` bei 25 % Deckkraft; Blocklinien `#1F2A6B` voll, 3 px
+
+**Schrift**
+- Nur Systemschriften. Ziffern im Brett: `"Trebuchet MS", "Segoe UI", system-ui, sans-serif`, Gewicht 700 bei Vorgaben und 500 bei eigener Eingabe.
+- Titel und Stufenwahl: `Georgia, "Times New Roman", serif`, Kapitälchen, mit Buchstabenabstand.
+- Ziffernhöhe im Feld etwa 60 % der Zellhöhe, mit `tabular-nums`.
+
+**Anordnung**
+- Eine einzige Spalte, höchstens 440 px breit, zentriert. Das Brett ist quadratisch und nutzt die volle Breite (`min(94vw, 440px)`), also mindestens etwa 38 px pro Zelle auf dem Smartphone.
+- Über dem Brett: Titel links, darunter die drei Stufen als breite Reiter (`leicht`, `mittel`, `schwer`). Jeder Reiter hat eine Mindesthöhe von 44 px. Die aktive Stufe ist blau gefüllt mit Papierschrift, die anderen sind mit Konturen gezeichnet.
+- Unter dem Brett: Ziffernfeld als 5+5-Raster. Es hat 9 Ziffern und den Löschen-Button `data-digit="0"` mit einem ×. Jeder Button ist mindestens 52 px hoch.
+- Die 3×3-Blöcke werden durch 3-px-Linien getrennt. Das Brett hat zusätzlich einen versetzten Schatten in Koralle (`box-shadow: 6px 6px 0 #FF5A4D`), der wie ein Fehlregister wirkt. Er muss mit `box-shadow` zu machen sein und darf nicht auf Grafiken beruhen.
+- Die Bedienelemente haben eckige Ecken (Radius 2 px) und 2 px Konturen in Blau.
+
+**Stimmung**
+Handgemachtes Druckheft: warm, hell, ruhig, ein bisschen verspielt. Ein leichtes Papierkorn aus einem CSS-`repeating-radial-gradient` bei sehr geringer Deckkraft darf es geben, es darf aber die Ziffern nicht stören. Keine Verläufe auf den Ziffern und keine Animationen außer einem 120 ms langen Einblenden der Auswahl.
+
+**Zustände**
+- **Vorgegeben:** blaue Ziffer, fett, Zellenhintergrund transparent. Es gibt einen sehr leichten Raster-Punkt-Ton `#1F2A6B` bei 6 %, damit sich die Vorgaben von den leeren Feldern abheben.
+- **Eigene Eingabe:** Teal, nicht fett, Hintergrund transparent.
+- **Ausgewählt:** Zellenfüllung Koralle bei 30 %, 3 px Koralle-Innenrand (`outline` oder `inset box-shadow`). Zeile, Spalte und Block der Auswahl bekommen als Hilfe einen leichten Koralle-Ton bei 10 %. Gleiche Ziffern wie die gewählte bekommen unterstrichen eine 2-px-Linie in Koralle.
+- **Konflikt (Klasse `konflikt`):** Füllung rot (Koralle 35 %), Ziffer `#B3122A` fett, gestrichelter 2-px-Rand. Der Konflikt ist so nicht nur über die Farbe erkennbar, sondern auch über Rand und Gewicht. Er hat Vorrang vor Eigeneingabe-Teal, aber die Auswahl bleibt zusätzlich sichtbar (der dickere Innenrand).
+- **Gelöst (`body.geloest`):** Das Brett wird gelb gefüllt, der Schatten wird blau und der Titel bekommt ein Häkchen als Text.
+- **Kontrast:** Blau auf Papier hat etwa 12:1, Teal auf Papier etwa 4,2:1 und ist deshalb kräftig gewählt. Falls nötig, auf `#0B7A72` abdunkeln.
+
+## Geprüfte Optionen
+- **Risodruck-Zweifarbheft:** Gewählt. Hell, heftartig, eine Tinte pro Zustand, mit reinem CSS machbar und weit weg von den dunklen Vorgängern.
+- **Neo-Brutalismus (dicke Konturen, harte Schatten, Grellfarben):** Verworfen. Er ist gut lesbar, aber ein verbreiteter Trend, der sich von vielen Seiten kaum abhebt; außerdem raten die Quellen, die Gestaltung bei Bedienelementen dezent zu halten.
+- **Bauhaus-/De-Stijl-Farbfelder (schwarze Linien, Grundfarben):** Verworfen. Die Blockstruktur passt zwar gut zum 3×3-Raster, aber es bestünde die Gefahr, Mondrian nachzuahmen, und viele Farbflächen wären auf dem Brett unruhig.
+- **Großdruck-Rätselheft (Schwarz auf Weiß, Zeitungsstil):** Verworfen. Es ist sehr lesbar, bietet aber zu wenig eigenen Charakter und keine klaren Farbzustände für Auswahl und Konflikt.
+
+## Quellen
+- https://ggprompts.github.io/htmlstyleguides/styles/risograph.html
+- https://chrislemke.github.io/website_designs/examples/Risograph.html
+- https://www.arts.ac.uk/partnerships/outreach/insights/how-to/techniques/how-totechniques-create-a-two-colour-risograph-print
+- https://www.creativebloq.com/print-design/three-colour-risograph-print-5128047
+- https://setproduct.com/blog/retro-brutalist-ui-design-2026
+- https://pixso.net/articles/neo-brutalism-design/
+- https://www.designrush.com/agency/website-design-development/trends/web-design-trends
+- https://sammlung.staedelmuseum.de/en/person/de-stijl
+- https://openoregon.pressbooks.pub/digitalfoundations/?p=574
+- https://www.hugendubel.de/de/taschenbuch/grossdruck_kreuzwortraetsel_band_4-47911184-produkt-details.html
+- https://typetype.org/de/fonts/crossword/
+
+Ich habe die Seiten nur in den Suchergebnissen gesehen und keine davon einzeln geöffnet.

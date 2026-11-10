@@ -5,7 +5,8 @@ Aufrufe mit Prompt und Kontext, die gestreamten Antworten, Berichte und das fert
 schreibt das alles im Originaltempo (oder schneller) in einen neuen Lauf. Das Dashboard zeigt ihn wie einen echten.
 
 Aufruf: python orchestrator/wiedergabe.py [LAUF] [--tempo 2]
-Quelle: aufzeichnungen/<LAUF> (im Repo, zum Weitergeben) oder runs/<LAUF>. Ohne LAUF die neueste Aufzeichnung.
+Quelle: runs/<LAUF>, ohne LAUF der neueste abspielbare Lauf. Die Wiedergabe landet in runs/<zeit>-demo
+und ist in .gitignore ausgeschlossen, damit nicht jede abgespielte Demo als Kopie ins Repo kommt.
 """
 import argparse
 import json
@@ -17,7 +18,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
-AUFZEICHNUNGEN = ROOT / "aufzeichnungen"
 TEMPI = (1, 2, 4, 8)
 
 
@@ -47,19 +47,14 @@ def ist_aufzeichnung(d):
     return start.get("modus") == "live" and not start.get("quelle") and bis_zur_freigabe(events(d)) is not None
 
 
-def aufzeichnungen(runs=RUNS, gespeichert_in=AUFZEICHNUNGEN):
-    """Alle abspielbaren Läufe, neueste zuerst. Eine Kopie in aufzeichnungen/ hat Vorrang vor runs/."""
-    gefunden = {}
-    for basis, gespeichert in ((runs, False), (gespeichert_in, True)):
-        if basis.exists():
-            for d in basis.iterdir():
-                if d.is_dir() and ist_aufzeichnung(d):
-                    gefunden[d.name] = (d, gespeichert or gefunden.get(d.name, (None, False))[1])
+def aufzeichnungen(runs=RUNS):
+    """Alle abspielbaren Läufe in runs/, neueste zuerst."""
     out = []
-    for lauf_id in sorted(gefunden, reverse=True):
-        d, gespeichert = gefunden[lauf_id]
+    for d in sorted((p for p in runs.iterdir() if p.is_dir()), key=lambda p: p.name, reverse=True) if runs.exists() else []:
+        if not ist_aufzeichnung(d):
+            continue
         ev = bis_zur_freigabe(events(d))
-        out.append({"id": lauf_id, "pfad": d, "gespeichert": gespeichert,
+        out.append({"id": d.name, "pfad": d,
                     "dauer": round(ev[-1]["t"] - ev[0]["t"]) if ev and "t" in ev[0] else None,
                     "schleifen": sum(1 for e in ev if e.get("status") == "run" and (e.get("runde") or 1) > 1),
                     "ergebnis": (d / "ergebnis" / "index.html").exists()})
@@ -119,7 +114,7 @@ def plan(quelle):
 def abspielen(quelle, tempo):
     ev, aktionen = plan(quelle)
     start_q = lies_json(quelle / "start.json", {})
-    lauf_id = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+    lauf_id = datetime.now().strftime("%Y-%m-%d-%H%M%S") + "-demo"
     ziel = RUNS / lauf_id
     (ziel / "aufrufe").mkdir(parents=True)
     (ziel / "live").mkdir()

@@ -283,7 +283,6 @@ details.mehr[open] > summary { margin-bottom: 10px; }
     <select id="run" aria-label="Lauf wählen"></select>
     <label>Demo spielt ab <select id="aufz" aria-label="Aufzeichnung für die Demo"></select></label>
     <label>Tempo <select id="tempo"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label>
-    <button class="btn" id="behalten" hidden title="Kopiert diesen Lauf nach aufzeichnungen/. Dort kann er committet werden, dann läuft die Demo auch auf anderen Rechnern.">Als Demo behalten</button>
     <div class="startline" id="startline"></div>
     <details class="mehr" id="protokoll">
       <summary>Protokoll: jeder Schritt dieses Laufs</summary>
@@ -501,7 +500,7 @@ function waehleAgent(k) {
 function renderHead() {
   const s = D.start || {};
   $('modus').hidden = !s.modus;
-  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : s.quelle ? `Demo: Aufzeichnung von Lauf ${s.quelle}${s.tempo > 1 ? `, ${s.tempo}× so schnell` : ''}` : 'Demo: vorbereitete Antworten';
+  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : s.quelle ? `Demo: Aufzeichnung von Lauf ${s.quelle}${s.tempo > 1 ? `, ${s.tempo}× so schnell` : ''}` : 'Demo';
   $('modus').className = 'badge ' + (s.modus || '');
   $('play').hidden = !D.ergebnis; $('play').href = `/ergebnis/${current}/index.html`;
   const [st, txt] = runState();
@@ -758,8 +757,7 @@ async function renderLeft(node, call, hv, key) {
     if (rec.kosten_usd != null) fakten.push(['Kosten', `${rec.kosten_usd.toFixed(3).replace('.', ',')} USD`]);
     fakten.push(['Tokens (geschätzt)', `≈ ${kb(tokIn(call))} rein · ${kb(tokOut(call))} raus`]);
     if (rec.fehler) fakten.push(['Fehler', rec.fehler]);
-    const demo = rec.aufzeichnung ? `<p class="note warn">Demo: Aufzeichnung des echten Aufrufs aus Lauf ${esc(rec.aufzeichnung)}. Hier antwortet gerade kein Modell.</p>`
-      : rec.simuliert ? `<p class="note warn">Demo: Statt des Modells antwortet ein vorbereiteter Text. Alles danach läuft echt.</p>` : '';
+    const demo = rec.aufzeichnung ? `<p class="note warn">Demo: Aufzeichnung des echten Aufrufs aus Lauf ${esc(rec.aufzeichnung)}. Hier antwortet gerade kein Modell.</p>` : '';
     const body = a.befehl ? '' : `{\n  "model": "${a.body.model}",\n  "stream": true,\n  "messages": [{\n    "role": "user",\n    "content": "${parts.map(p => '‹' + p + '›').join(' + ')}"\n  }]\n}`;
     const tech = a.befehl
       ? `<pre class="raw box">$ ${esc(a.befehl.join(' '))} &lt; ‹${esc(parts.join(' + '))}›</pre>` +
@@ -842,7 +840,7 @@ function renderStart() {
   leiste.classList.toggle('abgebrochen', abgebrochen);
   leiste.classList.toggle('demo', ende);
   if (wartet || abgebrochen || ende) {
-    const art = D.start.modus === 'live' ? 'Echter Lauf' : 'Skript-Demo';
+    const art = 'Echter Lauf';
     setHtml($('entscheidungText'), ende
       ? `<b>Demo zu Ende.</b> An dieser Stelle entscheidet im echten Lauf ein Mensch: Ergebnis prüfen, dann freigeben oder verwerfen.`
       : wartet
@@ -857,8 +855,6 @@ function renderStart() {
   // Demo = Aufzeichnung abspielen. Ohne Aufzeichnung erklärt der Knopf, was fehlt.
   $('startDemo').classList.toggle('gesperrt', !AUFZ.length);
   $('startDemo').title = AUFZ.length ? `Spielt die Aufzeichnung von Lauf ${$('aufz').value} ab (${$('tempo').value}×), ohne Modelle und ohne Kosten` : 'Noch keine Aufzeichnung: Lass einmal einen echten Lauf bis zum Ende laufen';
-  const eintrag = AUFZ.find(a => a.id === current);
-  $('behalten').hidden = !eintrag || eintrag.gespeichert;
   const fehler = PZ && !laeuft && PZ.code && !PZ.abgebrochen;
   $('startfehler').hidden = !fehler;
   if (fehler) $('startfehler').textContent = `Lauf mit Fehler beendet: ${PZ.letzte}`;
@@ -878,14 +874,9 @@ async function ladeAufzeichnungen() {
   aufzStand = Date.now();
   const sel = $('aufz'), vorher = sel.value || erinnere('demo-aufzeichnung');
   const min = s => s == null ? '' : ` · ${Math.max(1, Math.round(s / 60))} min`;
-  setHtml(sel, AUFZ.map(a => `<option value="${a.id}">${a.id}${min(a.dauer)}${a.schleifen ? ' · mit Schleife' : ''}${a.ergebnis ? '' : ' · ohne Ergebnis'}${a.gespeichert ? ' · behalten' : ''}</option>`).join(''));
+  setHtml(sel, AUFZ.map(a => `<option value="${a.id}">${a.id}${min(a.dauer)}${a.schleifen ? ' · mit Schleife' : ''}${a.ergebnis ? '' : ' · ohne Ergebnis'}</option>`).join(''));
   if (AUFZ.some(a => a.id === vorher)) sel.value = vorher;
 }
-async function behalten() {
-  const z = await post('/api/behalten', { lauf: current });
-  if (z) { alert(`Gespeichert in ${z.pfad}. Committe den Ordner, dann läuft diese Demo auch auf anderen Rechnern.`); ladeAufzeichnungen(); }
-}
-
 async function starte(modus) {
   if (modus === 'demo' && !AUFZ.length) {
     alert('Noch keine Aufzeichnung. Lass einmal einen echten Lauf bis zum Ende laufen. Danach ist er hier als Demo abspielbar.');
@@ -969,7 +960,6 @@ $('graphbox').onscroll = setzeZeiger;
 $('startDemo').onclick = () => starte('demo');
 $('startLive').onclick = () => starte('live');
 $('stopp').onclick = stoppe;
-$('behalten').onclick = behalten;
 $('aufz').onchange = e => { merke('demo-aufzeichnung', e.target.value); renderStart(); };
 $('tempo').onchange = e => { merke('demo-tempo', e.target.value); renderStart(); };
 $('tempo').value = ['1', '2', '4', '8'].includes(erinnere('demo-tempo')) ? erinnere('demo-tempo') : '2';

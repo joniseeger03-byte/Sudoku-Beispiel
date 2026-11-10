@@ -22,13 +22,11 @@ Die Demo spielt einen **aufgezeichneten echten Lauf** ab: echte Modell-Antworten
 4. Klicke oben auf **Neuer Lauf → ▶ Demo** (oder **Terminal → Run Task → 2 Demo: Aufzeichnung abspielen**).
 5. Am Ende: **Ergebnis spielen**. Die Demo endet an der Stelle, an der im echten Lauf du entscheidest. Zu entscheiden gibt es bei ihr nichts, sie ändert `main` nie.
 
-**Woher die Aufzeichnungen kommen:** Jeder echte Lauf, der bis zur Freigabe kommt, ist automatisch abspielbar. Er liegt dann in `runs/`, und das ist in `.gitignore` ausgeschlossen. Damit eine Demo auch auf einem anderen Rechner läuft, wähle den Lauf unter **Lauf ▾** und klicke **Als Demo behalten**. Er wird nach `aufzeichnungen/` kopiert. Diesen Ordner committest du. Gibt es noch keine Aufzeichnung, mach zuerst Schritt 2.
+**Woher die Aufzeichnungen kommen:** Jeder echte Lauf landet in `runs/<lauf>/`. Dieser Ordner kommt ins Repo, alle Läufe sind also die Beispiele des Projekts. Jeder echte Lauf, der bis zur Freigabe kam, ist als Demo abspielbar, auch auf anderen Rechnern, sobald er committet ist. Gibt es noch keinen, mach zuerst Schritt 2.
 
 Abgespielt wird mit `orchestrator/wiedergabe.py`: Ereignisse, Aufrufe, gestreamte Antworten, Berichte und Ergebnis kommen im Originaltempo oder 2×, 4×, 8× so schnell. Neue Läufe zeichnen auch auf, wann welches Stück einer Antwort kam. Bei älteren Läufen verteilt die Wiedergabe den Text gleichmäßig über die Dauer des Aufrufs.
 
-Die alte Skript-Demo mit vorbereiteten Antworten aus `orchestrator/demo/` gibt es noch über die Kommandozeile: `python orchestrator/run.py --demo`.
-
-Vor einer Vorführung räumt **0 Alles zurücksetzen** alte Läufe und den Arbeitsbereich ab. Aufzeichnungen in `aufzeichnungen/` bleiben.
+Jede abgespielte Demo landet als `runs/<zeit>-demo/` und ist in `.gitignore` ausgeschlossen, damit keine Kopien ins Repo kommen. **0 Arbeitsbereich zurücksetzen** räumt diese Wiedergaben und den Arbeitsbereich ab, die Läufe in `runs/` bleiben.
 
 ## Das Dashboard
 
@@ -42,7 +40,7 @@ Das Dashboard ist für die Vorführung gebaut: Es zeigt wenig und erklärt auf K
 - Der **Info-Kreis** klappt Details und Erklärung auf.
 - Oben rechts startest du unter **Neuer Lauf** eine **▶ Demo** oder einen **▶ Echten Lauf**, während eines Laufs steht dort **■ Abbrechen**. Ein neuer echter Lauf ist gesperrt, solange ein echter Lauf auf deine Entscheidung wartet. Demos sperren nichts.
 - Wartet der angezeigte Lauf, erscheint darunter eine Leiste mit **Ergebnis spielen**, **✓ Freigeben** und **✕ Verwerfen**. Bei abgebrochenen Läufen löscht **✕ Entwurf löschen** die halben Worktrees. Gestartet wird `orchestrator/run.py` (echt) oder `orchestrator/wiedergabe.py` (Demo) im Hintergrund, die Ausgabe steht in `runs/_prozess.log`. Es läuft immer höchstens ein Lauf aus dem Dashboard. Startbefehle nimmt das Dashboard nur von der eigenen Seite an, fremde Webseiten können keinen Lauf auslösen.
-- **Lauf ▾** enthält Laufauswahl, die Aufzeichnung und das Tempo für die Demo, **Als Demo behalten**, Startbefehl und Protokoll. Das Dashboard folgt immer dem neuesten Lauf, bis du dort einen älteren wählst. Den Agenten für Teil 1 wählst du in der Stufen-Leiste.
+- **Lauf ▾** enthält Laufauswahl, die Aufzeichnung und das Tempo für die Demo, Startbefehl und Protokoll. Das Dashboard folgt immer dem neuesten Lauf, bis du dort einen älteren wählst. Den Agenten für Teil 1 wählst du in der Stufen-Leiste.
 - Technische Befehle stehen zugeklappt bei den Bausteinen Modell und Harness.
 
 ## Schritt 2: Echter Lauf
@@ -55,7 +53,7 @@ Das Dashboard ist für die Vorführung gebaut: Es zeigt wenig und erklärt auf K
 
 Danach im Dashboard: **Ergebnis spielen**, dann **✓ Freigeben** (oder Task **4 Lauf freigeben**). Erst dann landet das Ergebnis in `main` unter `arbeitsbereich/projekt`. Das ist ein eigenes Git-Repo, VS Code zeigt es in der Quellcodeverwaltung als „projekt“ an. Jeder Lauf baut das ganze Projekt neu, deshalb ersetzt eine Freigabe den Stand in `main`. Frühere Freigaben bleiben in der Git-Historie. Neue Läufe starten immer vom leeren Anfangsstand (Commit „Start“). Hast du im Projekt selbst etwas geändert und nicht committet, bricht die Freigabe ab, statt es zu überschreiben.
 
-Gefällt dir das Ergebnis nicht, löscht **✕ Verwerfen** (oder Task **4b Lauf verwerfen**) Worktrees, Branches und Ergebnis des Laufs. Das Protokoll bleibt im Dashboard sichtbar, und der Lauf bleibt als Demo abspielbar.
+Gefällt dir das Ergebnis nicht, löscht **✕ Verwerfen** (oder Task **4b Lauf verwerfen**) den Entwurf im Arbeitsbereich, also Worktrees und Branches. Der Lauf in `runs/` bleibt vollständig als Beispiel und Demo erhalten.
 
 Du hast nur einen Anbieter? Trage ihn unter `rollen` in `config.json` überall ein. Nur `integration` braucht Claude Code, weil dieser Agent selbst Dateien ändert. Ohne Claude Code wählt `design` außerdem ohne Websuche aus dem Modellwissen.
 
@@ -83,14 +81,13 @@ Modelle ohne Werkzeuge korrigieren blind. In echten Läufen pendelten sie zwisch
 | `orchestrator/agents.py` | HTTP-Aufruf an OpenAI-kompatible Schnittstellen und Start von Claude Code |
 | `orchestrator/ui_check.py` | Spielt die Oberfläche im Headless-Browser bis zum Sieg |
 | `orchestrator/wiedergabe.py` | Die Demo: spielt einen aufgezeichneten echten Lauf ab, ohne Modelle |
-| `aufzeichnungen/<lauf>/` | Behaltene Demo-Aufzeichnungen, im Repo, damit die Demo überall läuft |
 | `orchestrator/dashboard.py` / `.html` | Zeigt die Läufe an, liest nur `runs/` |
-| `runs/<lauf>/` | `start.json`, `events.jsonl`, `aufrufe/` (Prompt und Kontext je Aufruf), `live/`, Markdown-Ergebnisse |
+| `runs/<lauf>/` | Die Beispiele, im Repo: `start.json`, `events.jsonl`, `aufrufe/` (Prompt und Kontext je Aufruf), `live/` (Antworten und ihr Takt), Markdown-Berichte, `ergebnis/`. Demo-Wiedergaben (`*-demo`) sind ausgeschlossen. |
 | `arbeitsbereich/` | Zielprojekt und Git-Worktrees je Agent |
 
 ## Gut zu wissen
 
-- **Design:** Der Design-Agent sucht im Web nach Optionen, vergleicht sie und entscheidet sich für eine (`prompts/design.md`). Die Namen der letzten acht Designs bekommt er als Hinweis, damit er etwas anderes wählt. Das Ergebnis samt Quellen steht in `runs/<lauf>/design.md` und geht als Kontext an Oberfläche und Integration. In der Demo antwortet ein vorbereiteter Text.
+- **Design:** Der Design-Agent sucht im Web nach Optionen, vergleicht sie und entscheidet sich für eine (`prompts/design.md`). Die Namen der letzten acht Designs bekommt er als Hinweis, damit er etwas anderes wählt. Das Ergebnis samt Quellen steht in `runs/<lauf>/design.md` und geht als Kontext an Oberfläche und Integration.
 - **Abnahmetest:** `orchestrator/ui_check.py` spielt das Rätsel im Headless-Browser bis zum Sieg: sichtbare Auswahl, Setzen und Löschen auf allen Wegen, Stufenwahl, Blöcke, Konflikte.
 - **Kosten:** Ein echter Lauf verbraucht Guthaben bei jedem Anbieter. Setze dort ein Limit.
 - **Daten:** Auftrag und Zwischenergebnisse gehen an die Anbieter. Keine Passwörter oder vertraulichen Daten eintragen.

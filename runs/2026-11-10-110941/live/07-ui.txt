@@ -1,0 +1,426 @@
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sudoku – Seekarte bei Nacht</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="titel">
+      <h1>Sudoku <span>Lotungskarte</span></h1>
+    </header>
+
+    <p id="sieg" class="sieg" role="status">Kurs gehalten – das Rätsel ist gelöst!</p>
+
+    <nav class="stufen" aria-label="Schwierigkeitsstufe">
+      <button type="button" class="stufe" data-stufe="leicht">leicht</button>
+      <button type="button" class="stufe" data-stufe="mittel">mittel</button>
+      <button type="button" class="stufe" data-stufe="schwer">schwer</button>
+    </nav>
+
+    <main class="brettbereich">
+      <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+      <p id="status" class="status" aria-live="polite"></p>
+    </main>
+
+    <section class="pad" aria-label="Ziffernfeld">
+      <div class="ziffern">
+        <button type="button" class="ziffer" data-digit="1">1</button>
+        <button type="button" class="ziffer" data-digit="2">2</button>
+        <button type="button" class="ziffer" data-digit="3">3</button>
+        <button type="button" class="ziffer" data-digit="4">4</button>
+        <button type="button" class="ziffer" data-digit="5">5</button>
+        <button type="button" class="ziffer" data-digit="6">6</button>
+        <button type="button" class="ziffer" data-digit="7">7</button>
+        <button type="button" class="ziffer" data-digit="8">8</button>
+        <button type="button" class="ziffer" data-digit="9">9</button>
+        <button type="button" class="ziffer loeschen" data-digit="0" aria-label="Löschen">Löschen</button>
+      </div>
+      <div class="aktionen">
+        <button type="button" id="hinweis" class="aktion">Hinweis (3)</button>
+        <button type="button" id="notizen" class="aktion" aria-pressed="false">Notizen: aus</button>
+      </div>
+    </section>
+  </div>
+  <script src="board.js"></script>
+</body>
+</html>
+```
+
+```javascript
+(function () {
+  'use strict';
+
+  var brettEl = document.getElementById('brett');
+  var statusEl = document.getElementById('status');
+  var hinweisBtn = document.getElementById('hinweis');
+  var notizBtn = document.getElementById('notizen');
+  var stufenBtns = document.querySelectorAll('[data-stufe]');
+
+  var zellen = [];
+  var puzzle = new Array(81).fill(0);
+  var loesung = new Array(81).fill(0);
+  var werte = new Array(81).fill(0);
+  var notizen = [];
+  var hinweise = new Set();
+  var hinweiseUebrig = 3;
+  var notizModus = false;
+  var gewaehlt = -1;
+  var gerade = false;
+  var aktuelleStufe = 'mittel';
+  var anfrage = 0;
+
+  function zeile(i) { return Math.floor(i / 9); }
+  function spalte(i) { return i % 9; }
+  function block(i) { return Math.floor(zeile(i) / 3) * 3 + Math.floor(spalte(i) / 3); }
+  function verwandt(a, b) {
+    return zeile(a) === zeile(b) || spalte(a) === spalte(b) || block(a) === block(b);
+  }
+
+  function bauen() {
+    for (var i = 0; i < 81; i++) {
+      var z = document.createElement('div');
+      z.className = 'feld';
+      z.setAttribute('data-index', String(i));
+      z.setAttribute('role', 'gridcell');
+      if ((Math.floor(zeile(i) / 3) + Math.floor(spalte(i) / 3)) % 2 === 1) z.classList.add('tief');
+      if (spalte(i) % 3 === 2 && spalte(i) < 8) z.classList.add('rechts3');
+      if (zeile(i) % 3 === 2 && zeile(i) < 8) z.classList.add('unten3');
+      brettEl.appendChild(z);
+      zellen.push(z);
+      notizen.push(new Set());
+    }
+    brettEl.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-index]');
+      if (t) { gewaehlt = parseInt(t.getAttribute('data-index'), 10); render(); }
+    });
+  }
+
+  function konflikte() {
+    var menge = new Set();
+    for (var u = 0; u < 9; u++) {
+      var einheiten = [{}, {}, {}];
+      for (var k = 0; k < 9; k++) {
+        var idx = [u * 9 + k, k * 9 + u,
+          (Math.floor(u / 3) * 3 + Math.floor(k / 3)) * 9 + (u % 3) * 3 + (k % 3)];
+        for (var m = 0; m < 3; m++) {
+          var v = werte[idx[m]];
+          if (!v) continue;
+          (einheiten[m][v] = einheiten[m][v] || []).push(idx[m]);
+        }
+      }
+      einheiten.forEach(function (e) {
+        Object.keys(e).forEach(function (v) {
+          if (e[v].length > 1) e[v].forEach(function (i) { menge.add(i); });
+        });
+      });
+    }
+    return menge;
+  }
+
+  function bearbeitbar(i) { return puzzle[i] === 0 && !hinweise.has(i); }
+
+  function render() {
+    var k = konflikte();
+    var voll = werte.every(function (v) { return v !== 0; });
+    gerade = voll && k.size === 0;
+    document.body.classList.toggle('geloest', gerade);
+
+    for (var i = 0; i < 81; i++) {
+      var z = zellen[i];
+      var v = werte[i];
+      z.textContent = '';
+      if (v) {
+        z.textContent = String(v);
+      } else if (notizen[i].size) {
+        var n = document.createElement('span');
+        n.className = 'notizen';
+        for (var d = 1; d <= 9; d++) {
+          var s = document.createElement('span');
+          s.textContent = notizen[i].has(d) ? String(d) : '';
+          n.appendChild(s);
+        }
+        z.appendChild(n);
+      }
+      z.classList.toggle('vorgabe', puzzle[i] !== 0);
+      z.classList.toggle('eigene', puzzle[i] === 0 && v !== 0);
+      z.classList.toggle('hinweis', hinweise.has(i));
+      z.classList.toggle('konflikt', k.has(i) && puzzle[i] === 0);
+      z.classList.toggle('gewaehlt', i === gewaehlt);
+      z.classList.toggle('mit', gewaehlt >= 0 && i !== gewaehlt && verwandt(i, gewaehlt));
+    }
+    hinweisBtn.textContent = 'Hinweis (' + hinweiseUebrig + ')';
+    hinweisBtn.disabled = hinweiseUebrig <= 0 || gerade;
+    notizBtn.textContent = 'Notizen: ' + (notizModus ? 'an' : 'aus');
+    notizBtn.setAttribute('aria-pressed', notizModus ? 'true' : 'false');
+    notizBtn.classList.toggle('aktiv', notizModus);
+  }
+
+  function eingabe(d) {
+    if (gewaehlt < 0 || gerade || !bearbeitbar(gewaehlt)) return;
+    var i = gewaehlt;
+    if (d === 0) {
+      if (werte[i] !== 0) {
+        werte[i] = 0;
+      } else if (notizen[i].size) {
+        var letzte = Array.from(notizen[i]).pop();
+        notizen[i].delete(letzte);
+      }
+    } else if (notizModus) {
+      if (werte[i] !== 0) return;
+      if (notizen[i].has(d)) notizen[i].delete(d); else notizen[i].add(d);
+    } else {
+      werte[i] = d;
+      notizen[i].clear();
+      for (var j = 0; j < 81; j++) {
+        if (j !== i && verwandt(i, j)) notizen[j].delete(d);
+      }
+    }
+    render();
+  }
+
+  function hinweisGeben() {
+    if (hinweiseUebrig <= 0 || gerade) return;
+    var ziel = -1;
+    if (gewaehlt >= 0 && bearbeitbar(gewaehlt) && werte[gewaehlt] !== loesung[gewaehlt]) {
+      ziel = gewaehlt;
+    } else {
+      var kandidaten = [];
+      for (var i = 0; i < 81; i++) {
+        if (bearbeitbar(i) && werte[i] !== loesung[i]) kandidaten.push(i);
+      }
+      if (!kandidaten.length) return;
+      ziel = kandidaten[Math.floor(Math.random() * kandidaten.length)];
+    }
+    werte[ziel] = loesung[ziel];
+    notizen[ziel].clear();
+    hinweise.add(ziel);
+    hinweiseUebrig--;
+    gewaehlt = ziel;
+    render();
+  }
+
+  function neu(stufe) {
+    aktuelleStufe = stufe;
+    stufenBtns.forEach(function (b) {
+      b.classList.toggle('aktiv', b.getAttribute('data-stufe') === stufe);
+    });
+    var mein = ++anfrage;
+    statusEl.textContent = 'Lotung läuft …';
+    fetch('api/neu?stufe=' + stufe)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (daten) {
+        if (mein !== anfrage) return;
+        if (!daten || !daten.puzzle || daten.puzzle.length !== 81) throw new Error('Ungültige Daten');
+        puzzle = daten.puzzle.slice();
+        loesung = (daten.solution || []).slice();
+        werte = puzzle.slice();
+        notizen.forEach(function (n) { n.clear(); });
+        hinweise = new Set();
+        hinweiseUebrig = 3;
+        gewaehlt = -1;
+        statusEl.textContent = '';
+        render();
+      })
+      .catch(function () {
+        if (mein !== anfrage) return;
+        statusEl.textContent = 'Rätsel konnte nicht geladen werden. Bitte Stufe erneut wählen.';
+      });
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k >= '1' && k <= '9' && k.length === 1) {
+      eingabe(parseInt(k, 10));
+      e.preventDefault();
+    } else if (k === 'Delete' || k === 'Backspace') {
+      eingabe(0);
+      e.preventDefault();
+    } else if (k.indexOf('Arrow') === 0) {
+      e.preventDefault();
+      if (gewaehlt < 0) { gewaehlt = 0; render(); return; }
+      var z = zeile(gewaehlt), s = spalte(gewaehlt);
+      if (k === 'ArrowUp') z = Math.max(0, z - 1);
+      else if (k === 'ArrowDown') z = Math.min(8, z + 1);
+      else if (k === 'ArrowLeft') s = Math.max(0, s - 1);
+      else if (k === 'ArrowRight') s = Math.min(8, s + 1);
+      gewaehlt = z * 9 + s;
+      render();
+    }
+  });
+
+  document.querySelectorAll('[data-digit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      eingabe(parseInt(b.getAttribute('data-digit'), 10));
+    });
+  });
+  stufenBtns.forEach(function (b) {
+    b.addEventListener('click', function () { neu(b.getAttribute('data-stufe')); });
+  });
+  hinweisBtn.addEventListener('click', hinweisGeben);
+  notizBtn.addEventListener('click', function () { notizModus = !notizModus; render(); });
+
+  bauen();
+  render();
+  neu(aktuelleStufe);
+})();
+```
+
+```css
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #0B1F2E;
+  color: #F2EBD9;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  transition: background-color .4s;
+}
+body.geloest { background: #0F3D3A; }
+
+.app {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  max-width: 544px;
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "titel" "sieg" "stufen" "brett" "pad";
+}
+
+/* Titel mit Kartenrand-Teilstrichen */
+.titel { grid-area: titel; padding-bottom: 12px; position: relative; border-bottom: 1px solid #8FB8C9; }
+.titel::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 6px;
+  background: repeating-linear-gradient(90deg, #8FB8C9 0 1px, transparent 1px 10px);
+}
+h1 { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+h1 span { color: #8FB8C9; font-weight: 400; margin-left: .4em; }
+
+.sieg {
+  grid-area: sieg; display: none; margin: 0; padding: 12px;
+  background: #E8C14A; color: #0B1F2E; font-weight: 700; text-align: center;
+}
+body.geloest .sieg { display: block; }
+
+/* Stufen */
+.stufen { grid-area: stufen; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+button {
+  font: inherit; color: #F2EBD9; background: #183B52;
+  border: 1px solid #2E5266; border-radius: 0; cursor: pointer;
+  min-height: 44px; min-width: 44px; padding: 0 8px;
+}
+button:hover { border-color: #8FB8C9; }
+button:focus-visible { outline: 2px solid #8FB8C9; outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.stufe { display: flex; align-items: center; justify-content: center; gap: 8px; text-transform: capitalize; }
+.stufe::before {
+  content: ""; width: 8px; height: 8px; border: 2px solid currentColor; border-radius: 50%;
+}
+.stufe.aktiv, .aktion.aktiv { background: #E8C14A; color: #0B1F2E; border-color: #E8C14A; font-weight: 700; }
+
+/* Brett */
+.brettbereich { grid-area: brett; }
+.brett {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  width: 100%;
+  aspect-ratio: 1;
+  border: 3px solid #8FB8C9;
+  background: #0F2A3F;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+body.geloest .brett { border-color: #E8C14A; }
+
+.feld {
+  position: relative;
+  isolation: isolate;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; min-height: 36px;
+  background: #12304A;
+  border-right: 1px solid #2E5266;
+  border-bottom: 1px solid #2E5266;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: min(6.5vw, 2.2rem);
+  line-height: 1;
+  cursor: pointer;
+}
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+.feld.tief { background: #0F2A3F; }
+.feld.rechts3 { border-right: 3px solid #8FB8C9; }
+.feld.unten3 { border-bottom: 3px solid #8FB8C9; }
+.feld.mit { background: #1B4560; }
+
+.feld.vorgabe { color: #F2EBD9; font-weight: 700; cursor: default; }
+.feld.eigene { color: #5FD0C4; font-weight: 400; }
+.feld.hinweis { text-decoration: underline dotted; text-underline-offset: 4px; }
+
+/* Auswahl: eigene Klasse */
+.feld.gewaehlt { outline: 3px solid #E8C14A; outline-offset: -3px; z-index: 2; }
+.feld.gewaehlt::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: rgba(232, 193, 74, .3);
+}
+
+/* Konflikt */
+.feld.konflikt {
+  background: #5A1E26; color: #FF6B5E;
+  box-shadow: inset 0 0 0 2px #FF6B5E;
+}
+.feld.konflikt::after {
+  content: ""; position: absolute; top: 0; right: 0; width: 0; height: 0;
+  border-top: 10px solid #FF6B5E; border-left: 10px solid transparent;
+}
+.feld.konflikt.gewaehlt {
+  outline: none;
+  box-shadow: inset 0 0 0 3px #E8C14A, inset 0 0 0 5px #FF6B5E;
+}
+
+/* Notizen */
+.notizen {
+  position: absolute; inset: 2px;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  font-family: system-ui, sans-serif; font-size: .6rem; color: #8FB8C9; opacity: .8;
+  text-align: center; align-items: center; font-weight: 400; text-decoration: none;
+}
+
+.status { margin: 8px 0 0; min-height: 1.3em; color: #8FB8C9; font-size: .9rem; }
+
+/* Ziffernfeld */
+.pad { grid-area: pad; display: grid; gap: 8px; }
+.ziffern { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+.ziffer { font-size: 1.3rem; padding: 0; }
+.loeschen { grid-column: 1 / -1; font-size: 1rem; }
+.aktionen { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+@media (max-width: 430px) {
+  .ziffern { grid-template-columns: repeat(5, 1fr); }
+  .loeschen { grid-column: auto; font-size: .85rem; }
+}
+
+@media (min-width: 800px) {
+  .app {
+    max-width: 920px;
+    grid-template-columns: minmax(0, 520px) 340px;
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "titel titel" "sieg sieg" "brett stufen" "brett pad";
+    column-gap: 24px;
+    padding: 24px 12px;
+  }
+  .stufen, .pad { align-self: start; }
+  .ziffern { grid-template-columns: repeat(3, 1fr); }
+  .ziffer { min-height: 56px; }
+  .loeschen { grid-column: 1 / -1; }
+}
+```

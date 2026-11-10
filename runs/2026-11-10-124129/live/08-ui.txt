@@ -1,0 +1,369 @@
+
+▶ Glob: *
+
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sudoku – Trockengarten</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="garten">
+    <h1 class="titel">Sudoku</h1>
+
+    <nav class="stufen" aria-label="Schwierigkeitsstufe">
+      <button type="button" class="stein stufe" data-stufe="leicht">leicht</button>
+      <button type="button" class="stein stufe aktiv" data-stufe="mittel">mittel</button>
+      <button type="button" class="stein stufe" data-stufe="schwer">schwer</button>
+    </nav>
+
+    <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+
+    <div id="meldung" class="meldung" role="status" aria-live="polite"></div>
+
+    <div class="ziffernfeld" aria-label="Ziffernfeld">
+      <button type="button" class="stein ziffer" data-digit="1">1</button>
+      <button type="button" class="stein ziffer" data-digit="2">2</button>
+      <button type="button" class="stein ziffer" data-digit="3">3</button>
+      <button type="button" class="stein ziffer" data-digit="4">4</button>
+      <button type="button" class="stein ziffer" data-digit="5">5</button>
+      <button type="button" class="stein ziffer" data-digit="6">6</button>
+      <button type="button" class="stein ziffer" data-digit="7">7</button>
+      <button type="button" class="stein ziffer" data-digit="8">8</button>
+      <button type="button" class="stein ziffer" data-digit="9">9</button>
+      <button type="button" class="stein ziffer loeschen" data-digit="0" aria-label="Löschen">Löschen</button>
+    </div>
+  </main>
+  <script src="board.js"></script>
+</body>
+</html>
+```
+
+```javascript
+(function () {
+  'use strict';
+
+  var brett = document.getElementById('brett');
+  var meldung = document.getElementById('meldung');
+  var cells = [];
+  var values = new Array(81).fill(0);
+  var given = new Array(81).fill(false);
+  var selected = -1;
+  var solved = false;
+  var ladeNr = 0;
+  var stufe = 'mittel';
+
+  // Brett aufbauen
+  for (var i = 0; i < 81; i++) {
+    var el = document.createElement('div');
+    var r = Math.floor(i / 9), c = i % 9;
+    el.className = 'feld';
+    if (c % 3 === 2 && c < 8) el.className += ' blockrechts';
+    if (r % 3 === 2 && r < 8) el.className += ' blockunten';
+    el.setAttribute('data-index', String(i));
+    el.setAttribute('role', 'gridcell');
+    brett.appendChild(el);
+    cells.push(el);
+  }
+
+  brett.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-index]');
+    if (!t) return;
+    select(parseInt(t.getAttribute('data-index'), 10));
+  });
+
+  function peers(a, b) {
+    var ra = Math.floor(a / 9), ca = a % 9, rb = Math.floor(b / 9), cb = b % 9;
+    return ra === rb || ca === cb ||
+      (Math.floor(ra / 3) === Math.floor(rb / 3) && Math.floor(ca / 3) === Math.floor(cb / 3));
+  }
+
+  function findConflicts() {
+    var set = {};
+    for (var a = 0; a < 81; a++) {
+      if (!values[a]) continue;
+      for (var b = a + 1; b < 81; b++) {
+        if (values[b] === values[a] && peers(a, b)) {
+          set[a] = true;
+          set[b] = true;
+        }
+      }
+    }
+    return set;
+  }
+
+  function render() {
+    var conf = findConflicts();
+    var full = true, anyConf = false;
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i];
+      el.textContent = values[i] ? String(values[i]) : '';
+      if (!values[i]) full = false;
+      var cls = ['feld'];
+      if (el.classList.contains('blockrechts')) cls.push('blockrechts');
+      if (el.classList.contains('blockunten')) cls.push('blockunten');
+      cls.push(given[i] ? 'vorgabe' : 'eigen');
+      if (selected >= 0 && i !== selected && peers(i, selected)) cls.push('bezug');
+      if (conf[i]) { cls.push('konflikt'); anyConf = true; }
+      if (i === selected) cls.push('selected');
+      el.className = cls.join(' ');
+    }
+    solved = full && !anyConf;
+    document.body.classList.toggle('geloest', solved);
+    meldung.textContent = solved ? 'Geschafft – das Rätsel ist gelöst.' : '';
+  }
+
+  function select(i) {
+    selected = i;
+    render();
+  }
+
+  function setDigit(d) {
+    if (selected < 0 || given[selected] || solved) return;
+    values[selected] = d;
+    render();
+  }
+
+  function move(dr, dc) {
+    if (selected < 0) { select(0); return; }
+    var r = Math.floor(selected / 9) + dr, c = (selected % 9) + dc;
+    if (r < 0 || r > 8 || c < 0 || c > 8) return;
+    select(r * 9 + c);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k >= '1' && k <= '9') { setDigit(parseInt(k, 10)); e.preventDefault(); }
+    else if (k === 'Delete' || k === 'Backspace' || k === 'Del' || k === '0') { setDigit(0); e.preventDefault(); }
+    else if (k === 'ArrowUp') { move(-1, 0); e.preventDefault(); }
+    else if (k === 'ArrowDown') { move(1, 0); e.preventDefault(); }
+    else if (k === 'ArrowLeft') { move(0, -1); e.preventDefault(); }
+    else if (k === 'ArrowRight') { move(0, 1); e.preventDefault(); }
+  });
+
+  // Ziffernfeld
+  var pad = document.querySelectorAll('[data-digit]');
+  Array.prototype.forEach.call(pad, function (b) {
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    b.addEventListener('click', function () {
+      setDigit(parseInt(b.getAttribute('data-digit'), 10));
+    });
+  });
+
+  // Stufen
+  var stufenBtns = document.querySelectorAll('[data-stufe]');
+  Array.prototype.forEach.call(stufenBtns, function (b) {
+    b.addEventListener('click', function () {
+      neu(b.getAttribute('data-stufe'));
+    });
+  });
+
+  function markStufe() {
+    Array.prototype.forEach.call(stufenBtns, function (b) {
+      b.classList.toggle('aktiv', b.getAttribute('data-stufe') === stufe);
+    });
+  }
+
+  function neu(s) {
+    stufe = s;
+    markStufe();
+    var nr = ++ladeNr;
+    fetch('api/neu?stufe=' + encodeURIComponent(s))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (nr !== ladeNr) return;
+        for (var i = 0; i < 81; i++) {
+          values[i] = data.puzzle[i] || 0;
+          given[i] = values[i] !== 0;
+        }
+        selected = -1;
+        render();
+      })
+      .catch(function () {
+        if (nr !== ladeNr) return;
+        meldung.textContent = 'Rätsel konnte nicht geladen werden.';
+      });
+  }
+
+  neu(stufe);
+})();
+```
+
+```css
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #E9E3D6;
+  background-image: repeating-linear-gradient(
+    90deg, transparent 0, transparent 9px, #E3DCCB 9px, #E3DCCB 10px);
+  color: #2B2B29;
+  font-family: "Hiragino Sans", "Segoe UI", system-ui, sans-serif;
+  transition: background-color .4s;
+}
+
+body.geloest {
+  background-color: #DDE6CF;
+  background-image: none;
+}
+
+.garten {
+  width: min(100%, 564px);
+  margin: 0 auto;
+  padding: 16px 12px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.titel {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 400;
+  font-variant: small-caps;
+  letter-spacing: .5em;
+  text-indent: .5em;
+  text-transform: lowercase;
+}
+
+/* Steine (Buttons) */
+.stein {
+  min-height: 48px;
+  border: 0;
+  border-radius: 6px;
+  background: #DAD3C2;
+  color: #2B2B29;
+  font: inherit;
+  font-variant: small-caps;
+  letter-spacing: .15em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.stein:focus-visible { outline: 3px solid #4F6B3A; outline-offset: 2px; }
+
+.stufen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stufe { font-size: 16px; }
+
+.stufe.aktiv {
+  background: #4A4A47;
+  color: #F5F1E7;
+}
+
+/* Brett */
+.brett {
+  width: 100%;
+  max-width: 540px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  background: #F5F1E7;
+  border: 3px solid #4A4A47;
+  transition: border-color .4s;
+}
+
+body.geloest .brett { border-color: #4F6B3A; }
+
+.feld {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  background: #F5F1E7;
+  border-right: 1px solid #CFC8B6;
+  border-bottom: 1px solid #CFC8B6;
+  font-size: clamp(18px, 6vw, 32px);
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+
+.feld.blockrechts { border-right: 3px solid #4A4A47; }
+.feld.blockunten { border-bottom: 3px solid #4A4A47; }
+
+body.geloest .feld.blockrechts { border-right-color: #4F6B3A; }
+body.geloest .feld.blockunten { border-bottom-color: #4F6B3A; }
+
+.feld.vorgabe { color: #2B2B29; font-weight: 600; }
+.feld.eigen { color: #2F4F7A; font-weight: 400; }
+
+.feld.bezug { background: #EBEBD9; }
+
+.feld.konflikt {
+  background: #F6D5CC;
+  color: #C8381F;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px #C8381F;
+}
+
+.feld.selected {
+  background: #B9CDA0;
+  box-shadow: inset 0 0 0 3px #4F6B3A;
+}
+
+.feld.selected.konflikt {
+  background: #B9CDA0;
+  box-shadow: inset 0 0 0 3px #4F6B3A, inset 0 0 0 5px #C8381F;
+}
+
+/* Meldung */
+.meldung {
+  min-height: 1.6em;
+  text-align: center;
+  font-size: 17px;
+  letter-spacing: .08em;
+  color: #4F6B3A;
+}
+
+body.geloest .meldung {
+  font-weight: 600;
+  padding: 10px;
+  background: #F5F1E7;
+  border: 3px solid #4F6B3A;
+}
+
+/* Ziffernfeld: 5 + 4 + Löschen */
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  max-width: 540px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.ziffer { font-size: 22px; font-variant: normal; letter-spacing: 0; min-height: 52px; }
+
+.ziffer.loeschen {
+  font-size: 14px;
+  font-variant: small-caps;
+  letter-spacing: .1em;
+}
+
+@media (min-width: 700px) {
+  .garten { padding-top: 32px; }
+}
+```

@@ -20,9 +20,8 @@ RUNS = ROOT / "runs"
 PAGE = Path(__file__).resolve().parent / "dashboard.html"
 RUN_PY = Path(__file__).resolve().parent / "run.py"
 WIEDERGABE_PY = Path(__file__).resolve().parent / "wiedergabe.py"
-AUFZEICHNUNGEN = ROOT / "aufzeichnungen"
 PORT = 8000
-RUN_ID = re.compile(r"^[0-9-]+$")
+RUN_ID = re.compile(r"^\d{4}-\d{2}-\d{2}-\d{6}(-demo)?$")   # Demo-Wiedergaben enden auf -demo
 FILE_NAME = re.compile(r"^[\w.-]+$")
 TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8"}
 
@@ -170,7 +169,7 @@ class Handler(BaseHTTPRequestHandler):
                 if r.returncode == 0:
                     return self.send(r.stdout.encode("utf-8"))
         if parts == ["api", "aufzeichnungen"]:
-            return self.json([{k: v for k, v in a.items() if k != "pfad"} for a in wiedergabe.aufzeichnungen(RUNS, AUFZEICHNUNGEN)])
+            return self.json([{k: v for k, v in a.items() if k != "pfad"} for a in wiedergabe.aufzeichnungen(RUNS)])
         if parts == ["api", "prozess"]:
             return self.json({**PROZESS.zustand(), "offen_live": offener_echter_lauf()})
         self.send(b"Nicht gefunden", "text/plain; charset=utf-8", 404)
@@ -190,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
             if modus not in ("demo", "live"):
                 return self.send(b"modus: demo oder live", "text/plain; charset=utf-8", 400)
             if modus == "demo":
-                liste = [a["id"] for a in wiedergabe.aufzeichnungen(RUNS, AUFZEICHNUNGEN)]
+                liste = [a["id"] for a in wiedergabe.aufzeichnungen(RUNS)]
                 if not liste:
                     return self.send("Noch keine Aufzeichnung. Lass einmal einen echten Lauf bis zur Freigabe laufen.".encode("utf-8"), "text/plain; charset=utf-8", 409)
                 quelle = quelle if quelle in liste else liste[0]
@@ -205,16 +204,6 @@ class Handler(BaseHTTPRequestHandler):
         if parts == ["api", "stopp"]:
             PROZESS.stoppe()
             return self.json(PROZESS.zustand())
-        if parts == ["api", "behalten"]:
-            # Aufzeichnung ins Repo übernehmen (aufzeichnungen/ ist nicht ignoriert), damit die Demo auch anderswo läuft
-            laenge = min(int(self.headers.get("Content-Length") or 0), 1000)
-            lauf_id = json.loads(self.rfile.read(laenge) or b"{}").get("lauf", "")
-            quelle = RUNS / lauf_id if RUN_ID.match(lauf_id or "") else None
-            if not quelle or not quelle.is_dir() or not wiedergabe.ist_aufzeichnung(quelle):
-                return self.send("Nur fertige echte Läufe lassen sich als Demo behalten.".encode("utf-8"), "text/plain; charset=utf-8", 400)
-            import shutil
-            shutil.copytree(quelle, AUFZEICHNUNGEN / lauf_id, dirs_exist_ok=True)
-            return self.json({"ok": True, "pfad": f"aufzeichnungen/{lauf_id}"})
         if parts in (["api", "freigabe"], ["api", "verwerfen"]):
             laenge = min(int(self.headers.get("Content-Length") or 0), 1000)
             lauf_id = json.loads(self.rfile.read(laenge) or b"{}").get("lauf", "")

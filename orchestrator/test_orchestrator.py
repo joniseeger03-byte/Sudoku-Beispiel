@@ -28,15 +28,13 @@ class GraphTest(unittest.TestCase):
         for k in graph.KNOTEN.values():
             self.assertIn(k["phase"], phasen)
 
-    def test_modellknoten_haben_prompt_rolle_und_demo_antwort(self):
+    def test_modellknoten_haben_prompt_und_rolle(self):
         cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
         for name, k in graph.KNOTEN.items():
             if k["art"] not in ("modell", "agent"):
                 continue
             self.assertTrue((ROOT / "prompts" / k["prompt"]).is_file(), k["prompt"])
             self.assertIn(name, cfg["rollen"], f"Rolle {name} fehlt in config.json")
-            demo = (run.DEMO / "texte" / f"{name}.md").exists() or name in run.DEMO_CODE
-            self.assertTrue(demo, f"Demo-Antwort für {name} fehlt")
 
     def test_positionen_sind_eindeutig(self):
         pos = [tuple(k["pos"]) for k in graph.KNOTEN.values()]
@@ -59,7 +57,8 @@ class HarnessTest(unittest.TestCase):
         self.assertTrue(run.prueft_oberflaeche('Path("index.html").read_text()'))
         self.assertTrue(run.prueft_oberflaeche("html.count('data-index=\"0\"')"))
         self.assertFalse(run.prueft_oberflaeche("import engine\nengine.generate('leicht')"))
-        self.assertFalse(run.prueft_oberflaeche((run.DEMO / "code" / "test_spiel.py").read_text(encoding="utf-8")))
+        self.assertFalse(run.prueft_oberflaeche("import unittest\nimport engine\n\nclass T(unittest.TestCase):\n"
+                                                "    def test_loesung(self):\n        self.assertEqual(len(engine.generate('leicht')['puzzle']), 81)\n"))
 
     def test_urteil(self):
         self.assertEqual(run.urteil("bla\nURTEIL: ok", ["ok", "nacharbeiten"]), "ok")
@@ -92,10 +91,11 @@ class DesignTest(unittest.TestCase):
     def test_design_knoten_schreibt_design_md(self):
         cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
         with tempfile.TemporaryDirectory() as t, patch.object(run, "RUNS", pathlib.Path(t) / "runs"), \
-                patch.object(run, "ROOT", pathlib.Path(t)), patch("run.time.sleep"):
+                patch.object(run, "ROOT", pathlib.Path(t)), patch("run.time.sleep"), \
+                patch("run.agents.claude_call", return_value=("# Design: Papier\n\nRuhig und klar.", 0.0)):
             (pathlib.Path(t) / "prompts").mkdir()
             (pathlib.Path(t) / "prompts" / "design.md").write_text("Prompt", encoding="utf-8")
-            lauf = run.Lauf("test", True)
+            lauf = run.Lauf("test")
             lauf.dir.mkdir(parents=True)
             lauf.schreibe("03-spezifikation.md", "Spezifikation\n")
             run.textknoten(lauf, cfg, "design", nachtrag="Bisherige Designs: X")

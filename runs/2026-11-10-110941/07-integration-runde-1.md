@@ -1,0 +1,34 @@
+# Integrationsbericht
+
+**Ergebnis:** Ich habe nichts geändert. Beide Prüfungen laufen ohne Fehler durch.
+
+## Was war kaputt
+Ich habe nichts gefunden, was nicht zusammenpasst.
+- `board.js` stellt ein leeres Feld als leeren Text dar. Das passt zur Engine, die `0` für leer liefert.
+- Im Browser wird `0` nie angezeigt. Beim Konflikttest und beim Sieg wertet `board.js` `0` als leer.
+- `board.js` holt das Rätsel mit `fetch('api/neu?stufe=…')`, relativ zur Seite, wie im Vertrag verlangt.
+- Alle Elemente des Bedienvertrags sind vorhanden:
+  - 81 Felder mit `data-index`
+  - Ziffernfeld mit `data-digit` 0–9
+  - drei Stufenbuttons mit `data-stufe`
+  - `keydown` auf `document`
+  - Klasse `konflikt`
+  - `body.geloest`
+- Die Seekarten-Farben (`#0B1F2E` für die Seite und `#E8C14A` für Auswahl und Gelöst) stehen in `style.css`. Das Design ist erhalten.
+
+## Was ich geändert habe
+Nichts. `engine.py`, `test_spiel.py`, `board.js`, `index.html` und `style.css` sind unverändert.
+
+## Prüfung
+- `python ../../../../orchestrator/ui_check.py .`: alle Prüfpunkte OK. Dazu gehören:
+  - 81 Felder und Raster
+  - Klick-, Tastatur-, Entf- und Rücktasten-Eingabe
+  - Pfeiltasten
+  - Vorgaben sind geschützt
+  - Konflikt wird markiert und verschwindet nach dem Löschen
+  - alle drei Stufen
+  - Rätsel kommt aus der Engine
+  - Sieg wird erkannt
+- `python test_spiel.py`: Engine-Tests bestanden, A1/A2 und `conflicts` OK.
+
+Hinweis und Notizen-Modus (A10, A11) deckt `ui_check.py` nicht ab. Ich habe sie nur im Code gelesen und im Browser nicht ausprobiert. Im Code sehen sie richtig aus: Der Hinweis ist auf 3 begrenzt und wird danach deaktiviert, und die Rücktaste entfernt die letzte Notiz.

@@ -1,0 +1,19 @@
+# Integrationsbericht
+
+**Was war kaputt:** Nichts, was ich gefunden habe. Ich habe keine Dateien geändert.
+
+**Was ich geprüft habe:**
+- **`board.js`:** Ein leeres Feld ist in der Engine `0`. Die Oberfläche zeigt es als leeren Text (`values[i] ? String(values[i]) : ''`) und übernimmt `data.puzzle[i] || 0`, beides passt zusammen.
+- **Aufbau und Bedienung:**
+  - Die Felder tragen `data-index`.
+  - Die Ziffern- und Stufen-Buttons nutzen `data-digit` und `data-stufe`.
+  - `keydown` hängt am `document`.
+  - Die Klassen `konflikt`, `selected` und `geloest` werden gesetzt.
+  - Der Abruf läuft über `fetch('api/neu?stufe=…')`, relativ zur Seite.
+- **`index.html`, `style.css` und `engine.py`:** Die Spezifikation habe ich nur gegen `board.js` und die Prüfläufe abgeglichen. Diese drei Dateien habe ich nicht gelesen, auch nicht auf das Trockengarten-Design hin.
+
+**Ergebnis der Prüfung:**
+- `python ../../../../orchestrator/ui_check.py .`: Alle 26 Prüfungen bestanden. Dazu gehören die 81 Felder, Klick, Tastatur und Pfeiltasten, der Schutz der Vorgaben, Konflikt, die drei Stufen, das Rätsel aus der Engine, vollständiges Ausfüllen und die Siegerkennung.
+- `python test_spiel.py`: A1–A6 und der Gesamtlauf bestanden. Die Ausgabe habe ich mit `tail -15` gekürzt, falls davor noch etwas stand, habe ich es nicht gesehen.
+
+Die Vorgabe, `fetch('api/neu?stufe=…')` zu nutzen, ist in `board.js` umgesetzt. Beim Abnahmelauf lieferte die Prüfumgebung diese Adresse offenbar aus, denn das angezeigte Rätsel stammte aus der Engine. Einen Server, der `api/neu` ausliefert, habe ich im Projektordner nicht gesucht.

@@ -1,0 +1,23 @@
+
+▶ Bash: ls; python ../../../../orchestrator/ui_check.py .; python test_spiel.py 2>&1 | tail -15
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\arbeitsbereich\worktrees\2026-11-10-093951\integration\board.js
+
+
+▶ Bash: cat index.html; grep -n "geloest\|konflikt\|ausgewaehlt\|blockrechts\|Bravo" style.css | head -30
+
+# Integrationsbericht
+
+**Was war kaputt:** Nichts. Ich habe `board.js`, `index.html` und `style.css` gegen den Vertrag gelesen und keinen Bruch zwischen Oberfläche und Engine gefunden.
+- Ein leeres Feld ist in der Engine `0`. `board.js` zeigt es als leeren Text an und rechnet intern mit `0`.
+- Die Oberfläche holt das Rätsel mit `fetch('api/neu?stufe=…')`. Das liefert dasselbe JSON wie `python engine.py neu <stufe>`.
+- Die `data-*`-Attribute, die Klassen `konflikt`, `ausgewaehlt` und `geloest` und die dicken Blocklinien sind vorhanden. Die Art-déco-Richtung (Nachtblau und Messing, „Bravo“-Zeile) ist unverändert.
+
+**Was ich geändert habe:** Nichts. Ich habe keine Datei angefasst.
+
+**Prüfung:**
+- `python ../../../../orchestrator/ui_check.py .`: alle 26 Prüfungen OK. Dazu gehören Raster, Auswahl, Klick-, Tastatur- und Löschen-Eingabe, Pfeiltasten, Schutz der Vorgaben, Konflikt-Markierung, die drei Stufen, vollständiges Ausfüllen und die Siegerkennung.
+- `python test_spiel.py`: A1 bis A6 OK, Ausgabe „Alle Kriterien erfüllt.“ Der Exit-Code selbst ist durch die Pipe verdeckt und wurde nicht ausgewertet.
+
+**Nicht geprüft:** Ob `api/neu` im Browser ohne die Prüfumgebung erreichbar ist, habe ich nicht getestet. Auch `README.md` (A16) habe ich nicht gelesen. Die Datei liegt im Ordner.

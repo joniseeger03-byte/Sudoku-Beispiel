@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""
+test_spiel.py – minimal engine test suite (A1, A2, conflict checks)
+
+Only the Python standard library is used.
+"""
+
+import sys
+import json
+import subprocess
+from pathlib import Path
+
+# ----------------------------------------------------------------------
+# Import the engine module (must be in the same directory)
+# ----------------------------------------------------------------------
+try:
+    import engine
+except Exception as e:
+    print(f"FEHLER: konnte engine importieren – {e}")
+    sys.exit(1)
+
+REQUIRED_KEYS = {"puzzle", "solution", "clues", "level"}
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+def run_engine_cli(level: str):
+    """Run `python engine.py neu <level>` and return the parsed JSON."""
+    cmd = [sys.executable, str(Path(__file__).with_name("engine.py")), "neu", level]
+    try:
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"FEHLER: CLI‑Aufruf fehlgeschlagen für level={level}: {e.stderr.strip()}")
+        sys.exit(1)
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        print(f"FEHLER: ungültiges JSON vom CLI‑Aufruf für level={level}: {e}")
+        sys.exit(1)
+    return data
+
+def count_clues(puzzle):
+    """Number of non‑zero entries in the puzzle list."""
+    return sum(1 for v in puzzle if v != 0)
+
+def check_unique_solution(puzzle):
+    """Return True iff exactly one solution exists."""
+    sols = engine.solutions(puzzle, limit=2)
+    return len(sols) == 1
+
+def validate_result(gen, level, source):
+    """Check a generate()-style result against A1/A2."""
+    if not isinstance(gen, dict) or not REQUIRED_KEYS.issubset(gen):
+        print(f"FEHLER: {source} für {level} gibt kein korrektes Dict zurück")
+        sys.exit(1)
+    puzzle = gen["puzzle"]
+    solution = gen["solution"]
+    clues = gen["clues"]
+    if len(puzzle) != 81 or len(solution) != 81:
+        print(f"FEHLER: {source} für {level} liefert keine 81‑Element‑Listen")
+        sys.exit(1)
+    if gen["level"] != level:
+        print(f"FEHLER: {source} für {level} liefert level={gen['level']}")
+        sys.exit(1)
+    if clues != count_clues(puzzle):
+        print(f"FEHLER: {source}: clues‑Angabe stimmt nicht mit Puzzle überein ({clues}!={count_clues(puzzle)})")
+        sys.exit(1)
+    if clues != engine.CLUES[level]:
+        print(f"FEHLER: {source}: clues ({clues}) ≠ erwartete CLUES[{level}] ({engine.CLUES[level]})")
+        sys.exit(1)
+    if not check_unique_solution(puzzle):
+        print(f"FEHLER: {source} für {level} erzeugt kein eindeutig lösbares Puzzle")
+        sys.exit(1)
+    sols = engine.solutions(puzzle, limit=2)
+    if sols[0] != solution:
+        print(f"FEHLER: {source} für {level}: solution passt nicht zur eindeutigen Lösung des Puzzles")
+        sys.exit(1)
+
+def test_generator(level):
+    """Test generate() and the CLI for a single level."""
+    # 1. generate() directly
+    validate_result(engine.generate(level), level, "generate()")
+
+    # 2. CLI output: generation is random, so each call yields its own
+    #    puzzle; it must satisfy the same contract.
+    validate_result(run_engine_cli(level), level, "CLI")
+
+def test_conflicts():
+    """Test conflicts() on a known bad grid and on a solved grid."""
+    # a) Solved correct grid – expect empty set
+    solved = [
+        5,3,4,6,7,8,9,1,2,
+        6,7,2,1,9,5,3,4,8,
+        1,9,8,3,4,2,5,6,7,
+        8,5,9,7,6,1,4,2,3,
+        4,2,6,8,5,3,7,9,1,
+        7,1,3,9,2,4,8,5,6,
+        9,6,1,5,3,7,2,8,4,
+        2,8,7,4,1,9,6,3,5,
+        3,4,5,2,8,6,1,7,9,
+    ]
+    if engine.conflicts(solved):
+        print("FEHLER: conflicts() meldet Konflikte in einem gültigen Sudoku")
+        sys.exit(1)
+
+    # b) Create a grid with a row conflict (duplicate 5 in first row)
+    conflict_grid = solved.copy()
+    conflict_grid[0] = 5
+    conflict_grid[1] = 5  # duplicate in same row
+    confl = engine.conflicts(conflict_grid)
+    expected = {0, 1}
+    if not expected.issubset(confl):
+        print(f"FEHLER: conflicts() erkennt nicht beide Konflikt‑Indizes {expected} (got {confl})")
+        sys.exit(1)
+
+# ----------------------------------------------------------------------
+# Main test execution
+# ----------------------------------------------------------------------
+def main():
+    # A1 & A2 – generator tests, 10 puzzles per level
+    for lvl in ["leicht", "mittel", "schwer"]:
+        for i in range(10):
+            test_generator(lvl)
+    print("OK: A1 und A2 – Generator liefert gültige, eindeutige Rätsel mit korrekter Hinweis‑Zahl")
+
+    # Conflict tests
+    test_conflicts()
+    print("OK: conflicts – korrekte Konflikterkennung")
+
+    print("OK: Engine‑Tests bestanden")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

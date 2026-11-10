@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sudoku</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="seite">
+    <header class="titel">
+      <h1>
+        <span class="t-spiel">Sudoku</span>
+        <span class="t-sieg">Geschafft</span>
+      </h1>
+    </header>
+
+    <nav class="stufen" aria-label="Schwierigkeitsstufe">
+      <button type="button" class="knopf stufe" data-stufe="leicht">Leicht</button>
+      <button type="button" class="knopf stufe" data-stufe="mittel">Mittel</button>
+      <button type="button" class="knopf stufe" data-stufe="schwer">Schwer</button>
+    </nav>
+
+    <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+
+    <p id="meldung" class="meldung" role="status" aria-live="polite"></p>
+
+    <div class="ziffernfeld" aria-label="Ziffernfeld">
+      <button type="button" class="knopf ziffer" data-digit="1">1</button>
+      <button type="button" class="knopf ziffer" data-digit="2">2</button>
+      <button type="button" class="knopf ziffer" data-digit="3">3</button>
+      <button type="button" class="knopf ziffer" data-digit="4">4</button>
+      <button type="button" class="knopf ziffer" data-digit="5">5</button>
+      <button type="button" class="knopf ziffer" data-digit="6">6</button>
+      <button type="button" class="knopf ziffer" data-digit="7">7</button>
+      <button type="button" class="knopf ziffer" data-digit="8">8</button>
+      <button type="button" class="knopf ziffer" data-digit="9">9</button>
+      <button type="button" class="knopf ziffer loeschen" data-digit="0" aria-label="Löschen">&#x232B;</button>
+    </div>
+  </main>
+  <script src="board.js"></script>
+</body>
+</html>

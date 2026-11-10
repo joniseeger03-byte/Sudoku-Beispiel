@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sudoku – Seekarte bei Nacht</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="titel">
+      <h1>Sudoku <span>Lotungskarte</span></h1>
+    </header>
+
+    <p id="sieg" class="sieg" role="status">Kurs gehalten – das Rätsel ist gelöst!</p>
+
+    <nav class="stufen" aria-label="Schwierigkeitsstufe">
+      <button type="button" class="stufe" data-stufe="leicht">leicht</button>
+      <button type="button" class="stufe" data-stufe="mittel">mittel</button>
+      <button type="button" class="stufe" data-stufe="schwer">schwer</button>
+    </nav>
+
+    <main class="brettbereich">
+      <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+      <p id="status" class="status" aria-live="polite"></p>
+    </main>
+
+    <section class="pad" aria-label="Ziffernfeld">
+      <div class="ziffern">
+        <button type="button" class="ziffer" data-digit="1">1</button>
+        <button type="button" class="ziffer" data-digit="2">2</button>
+        <button type="button" class="ziffer" data-digit="3">3</button>
+        <button type="button" class="ziffer" data-digit="4">4</button>
+        <button type="button" class="ziffer" data-digit="5">5</button>
+        <button type="button" class="ziffer" data-digit="6">6</button>
+        <button type="button" class="ziffer" data-digit="7">7</button>
+        <button type="button" class="ziffer" data-digit="8">8</button>
+        <button type="button" class="ziffer" data-digit="9">9</button>
+        <button type="button" class="ziffer loeschen" data-digit="0" aria-label="Löschen">Löschen</button>
+      </div>
+      <div class="aktionen">
+        <button type="button" id="hinweis" class="aktion">Hinweis (3)</button>
+        <button type="button" id="notizen" class="aktion" aria-pressed="false">Notizen: aus</button>
+      </div>
+    </section>
+  </div>
+  <script src="board.js"></script>
+</body>
+</html>
