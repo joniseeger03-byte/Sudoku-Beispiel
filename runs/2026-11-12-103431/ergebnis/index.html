@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Bauhaus-Webstuhl</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="seite">
+  <header class="titel"><h1>Sudoku</h1></header>
+
+  <div class="stufen" role="group" aria-label="Schwierigkeitsstufe">
+    <button type="button" class="stufe" data-stufe="leicht" aria-pressed="false">Leicht</button>
+    <button type="button" class="stufe" data-stufe="mittel" aria-pressed="true">Mittel</button>
+    <button type="button" class="stufe" data-stufe="schwer" aria-pressed="false">Schwer</button>
+  </div>
+
+  <p id="meldung" class="meldung" role="status" aria-live="polite"></p>
+
+  <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+
+  <div class="ziffernfeld" role="group" aria-label="Ziffernfeld">
+    <button type="button" class="ziffer" data-digit="1" aria-label="Ziffer 1">1</button>
+    <button type="button" class="ziffer" data-digit="2" aria-label="Ziffer 2">2</button>
+    <button type="button" class="ziffer" data-digit="3" aria-label="Ziffer 3">3</button>
+    <button type="button" class="ziffer" data-digit="4" aria-label="Ziffer 4">4</button>
+    <button type="button" class="ziffer" data-digit="5" aria-label="Ziffer 5">5</button>
+    <button type="button" class="ziffer" data-digit="6" aria-label="Ziffer 6">6</button>
+    <button type="button" class="ziffer" data-digit="7" aria-label="Ziffer 7">7</button>
+    <button type="button" class="ziffer" data-digit="8" aria-label="Ziffer 8">8</button>
+    <button type="button" class="ziffer" data-digit="9" aria-label="Ziffer 9">9</button>
+    <button type="button" class="ziffer loeschen" data-digit="0" aria-label="Feld löschen">✕</button>
+  </div>
+
+  <div id="sieg" class="sieg" role="alert" hidden>Geschafft! Das Rätsel ist richtig gelöst.</div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>

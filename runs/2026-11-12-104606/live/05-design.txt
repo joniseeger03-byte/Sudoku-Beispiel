@@ -1,0 +1,72 @@
+
+▶ ToolSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+# Terrazzo mit Messingfugen
+
+## Entscheidung
+Terrazzo hat gewonnen. Ein heller, ruhiger Steinboden mit Messingleisten bildet die 3×3-Blöcke als echte Bauteile ab, denn in Terrazzoböden trennen Messingstreifen die Felder. Die bunten Steinsplitter gibt es nur auf dem Rahmen und dem Hintergrund. Unter den Ziffern bleibt die Fläche glatt und kontrastreich. Die Richtung ist heller, wärmer und materieller als alle bisherigen Designs, und die Splitter lassen sich mit reinen CSS-Verläufen zeichnen.
+
+## Vorgaben für die Oberfläche
+**Farben**
+- Seitenhintergrund (Terrazzo-Grund): `#E9E1D3`. Darauf liegen Splitter als Punkte aus `radial-gradient`, nur im Rahmen und Hintergrund: Terrakotta `#D98E73`, Salbei `#7FA38F`, Ocker `#E3B04B`, Staubblau `#8FA7C4`, Kalk `#FBF8F1`.
+- Feldfläche: `#F8F4EA`, vollständig glatt, ohne Splitter.
+- Feinlinien zwischen Feldern: `#C9BFAE`, 1 px.
+- Messingleisten zwischen den Blöcken und um das Brett: `#8A6A1F`, 3 px. Der Brettrahmen ist 4 px breit, die Leisten laufen durchgehend.
+- Text: `#1F1B18`.
+- Ziffernfeld-Tasten: Fläche `#F8F4EA`, Rand `#8A6A1F`, 2 px. Ziffer `#1F1B18`.
+
+**Schrift**
+- Nur Systemschriften. Ziffern und Tasten: `ui-rounded, "Segoe UI", system-ui, sans-serif`, Gewicht 600 bei vorgegeben und 500 bei eigener Eingabe. Titel und Beschriftungen: `Georgia, "Times New Roman", serif`.
+- Ziffern im Brett etwa 6,2 vmin (mindestens 24 px). Tasten-Ziffern 28 px.
+
+**Anordnung**
+- Das Brett ist quadratisch, so breit wie das Display (`min(94vvw, 520px)`), mittig, mit Messingrahmen.
+- Titel klein darüber.
+- Darunter die drei Stufen-Buttons (leicht, mittel, schwer) als schmale Reihe von Terrazzo-Plättchen. Die aktive Stufe hat Fläche `#1F5E5B` und Text `#FBF8F1`.
+- Unter dem Brett das Ziffernfeld: 9 Tasten in einer Reihe (bzw. 5+4 auf sehr schmalen Displays) mit Löschen-Taste. Alle Tasten sind mindestens 44×44 px.
+- Das Brett nimmt auf dem Smartphone den größten Platz ein, ohne zu scrollen.
+
+**Stimmung**
+Eine ruhige Eingangshalle aus den 1950ern: hell, handwerklich, mit Stein und Metall. Keine Schatten außer einer 1 px Kante. Wenn gelöst (`body.geloest`), färbt sich der Messing zu `#B8892B`, und die Splitter-Ränder werden etwas dichter.
+
+**Zustände**
+- **Vorgegeben:** Ziffer `#1F1B18`, Gewicht 700, Feldfläche `#EFE8D8` (leicht abgedunkelt, wie ein eingelegter Stein).
+- **Eigene Eingabe:** Ziffer `#1F5E5B` (Petrolgrün, etwa 6:1 auf `#F8F4EA`), Gewicht 500, Fläche `#F8F4EA`.
+- **Ausgewählt:** Fläche `#FFE08A` und innen ein 3 px Rahmen `#1F1B18`. Zeile, Spalte und Block des gewählten Feldes bekommen die schwache Fläche `#F1E6C4`. Gleiche Ziffern wie die gewählte erhalten zusätzlich eine Unterstreichung in `#1F5E5B`.
+- **Konflikt (`.konflikt`):** Fläche `#F6CFC4`, Ziffer `#8E1B1B`, Gewicht 700, 3 px gestrichelter Innenrahmen `#8E1B1B` und eine feine diagonale Schraffur (`repeating-linear-gradient`). So erkennt man den Konflikt auch ohne Farbe, etwa bei Rot-Grün-Schwäche. Ist ein Feld zugleich ausgewählt, behält es die Konflikt-Schraffur und bekommt den schwarzen Auswahlrahmen.
+
+## Geprüfte Optionen
+- **Terrazzo mit Messingfugen:** Gewählt. Hell, materiell, neu gegenüber den bisherigen Designs, und die Messingleisten lösen die Blockgliederung von selbst.
+- **Azulejo (blau-weiße Fliesen):** Verworfen. Blau-Weiß liegt zu nah an Rechenheft und Seekarte, und Fliesenmuster stören hinter Ziffern.
+- **Zeitungsdruck-Raster (Schwarzweiß, Serifenziffern):** Verworfen. Sehr gut lesbar, aber ein naheliegender, unüberraschender Stil, der dem Rechenheft und dem Risodruck ähnelt.
+- **Tactile Brutalism/Bento-Grid (Trend 2026):** Verworfen. Der Trend ähnelt dem bisherigen Kartonbrett-Brutalismus.
+
+## Quellen
+- https://tutkit.com/de/blog/743-die-besten-neuen-ui-design-trends-des-monats-2026
+- https://enter.converge.ai/page/en-US/blog/web-design-trends
+- https://webflow.com/blog/web-design-trends-2026
+- https://www.baunetzwissen.de/glossar/t/terrazzo-3102789
+- https://www.baunetzwissen.de/drucken/terrazzo-1313987
+- https://www.baunetzwissen.de/drucken/fliesenkollektion-im-terrazzo-look-7562912
+- https://www.nssmag.com/de/lifestyle/45367/das-wiederaufleben-alternativer-italienischer-bodenbelage-verstehen
+- https://www.planet-wissen.de/kultur/suedeuropa/lissabon_metropole_am_fluss/pwieazulejosfliesenaufportugiesisch100.html
+- https://theculturetrip.com/europe/portugal/articles/a-brief-history-of-portugals-beautiful-azulejo-tiles
+- https://methodenkompetenz.blogs.uni-hamburg.de/wp-content/uploads/Typo/page.pdf
+- https://gitlab.gnome.org/GNOME/gnome-sudoku/-/issues/77
+- https://adrianroselli.com/2024/05/a-brief-note-on-highlighted-text.html
+- https://huggingface.co/spaces/nayohan/Sudoku/blob/main/style.css

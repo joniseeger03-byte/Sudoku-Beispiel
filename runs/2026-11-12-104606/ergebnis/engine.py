@@ -1,0 +1,146 @@
+"""engine.py – Sudoku-Engine (nur Python-Standardbibliothek)."""
+import json
+import random
+import sys
+
+CLUES = {"leicht": 38, "mittel": 32, "schwer": 26}
+
+_ALL = 0x3FE  # Bits 1..9
+
+_ROW = [i // 9 for i in range(81)]
+_COL = [i % 9 for i in range(81)]
+_BOX = [(i // 27) * 3 + (i % 9) // 3 for i in range(81)]
+
+_UNITS = (
+    [[r * 9 + c for c in range(9)] for r in range(9)]
+    + [[r * 9 + c for r in range(9)] for c in range(9)]
+    + [[(br * 3 + r) * 9 + bc * 3 + c for r in range(3) for c in range(3)]
+       for br in range(3) for bc in range(3)]
+)
+
+
+def _solve(grid, limit, randomize=False):
+    """Backtracking mit Bitmasken und MRV. Gibt bis zu `limit` Lösungen zurück."""
+    rows = [0] * 9
+    cols = [0] * 9
+    boxes = [0] * 9
+    empties = []
+    for i, v in enumerate(grid):
+        if v:
+            bit = 1 << v
+            if rows[_ROW[i]] & bit or cols[_COL[i]] & bit or boxes[_BOX[i]] & bit:
+                return []
+            rows[_ROW[i]] |= bit
+            cols[_COL[i]] |= bit
+            boxes[_BOX[i]] |= bit
+        else:
+            empties.append(i)
+
+    found = []
+    if limit <= 0:
+        return found
+
+    def rec(remaining):
+        if not remaining:
+            found.append(grid[:])
+            return len(found) >= limit
+        best = -1
+        best_mask = 0
+        best_count = 10
+        for pos, i in enumerate(remaining):
+            mask = _ALL & ~(rows[_ROW[i]] | cols[_COL[i]] | boxes[_BOX[i]])
+            cnt = bin(mask).count("1")
+            if cnt < best_count:
+                best, best_mask, best_count = pos, mask, cnt
+                if cnt <= 1:
+                    break
+        if best_count == 0:
+            return False
+        i = remaining[best]
+        rest = remaining[:best] + remaining[best + 1:]
+        digits = [d for d in range(1, 10) if best_mask & (1 << d)]
+        if randomize:
+            random.shuffle(digits)
+        r, c, b = _ROW[i], _COL[i], _BOX[i]
+        for d in digits:
+            bit = 1 << d
+            grid[i] = d
+            rows[r] |= bit
+            cols[c] |= bit
+            boxes[b] |= bit
+            stop = rec(rest)
+            rows[r] &= ~bit
+            cols[c] &= ~bit
+            boxes[b] &= ~bit
+            grid[i] = 0
+            if stop:
+                return True
+        return False
+
+    rec(empties)
+    return found
+
+
+def solutions(puzzle, limit):
+    """Liste mit höchstens `limit` Lösungen (je 81 Zahlen)."""
+    return _solve(list(puzzle), limit)
+
+
+def conflicts(grid):
+    """Indizes (0-80) aller Felder, die in Zeile/Spalte/Block kollidieren."""
+    result = set()
+    for unit in _UNITS:
+        seen = {}
+        for i in unit:
+            v = grid[i]
+            if v:
+                seen.setdefault(v, []).append(i)
+        for idxs in seen.values():
+            if len(idxs) > 1:
+                result.update(idxs)
+    return result
+
+
+def _random_solution():
+    return _solve([0] * 81, 1, randomize=True)[0]
+
+
+def generate(level):
+    """Erzeugt ein Rätsel mit eindeutiger Lösung und genau CLUES[level] Hinweisen."""
+    if level not in CLUES:
+        raise ValueError("Unbekannte Stufe: %r" % (level,))
+    target = CLUES[level]
+    while True:
+        solution = _random_solution()
+        puzzle = solution[:]
+        order = list(range(81))
+        random.shuffle(order)
+        clues = 81
+        for idx in order:
+            if clues <= target:
+                break
+            old = puzzle[idx]
+            puzzle[idx] = 0
+            if len(_solve(puzzle[:], 2)) == 1:
+                clues -= 1
+            else:
+                puzzle[idx] = old
+        if clues == target:
+            return {
+                "puzzle": puzzle,
+                "solution": solution,
+                "clues": clues,
+                "level": level,
+            }
+
+
+def main(argv):
+    if len(argv) == 3 and argv[1] == "neu" and argv[2] in CLUES:
+        print(json.dumps(generate(argv[2])))
+        return 0
+    sys.stderr.write("Aufruf: python engine.py neu <%s>\n" % "|".join(CLUES))
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

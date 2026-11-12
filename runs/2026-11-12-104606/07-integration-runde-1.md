@@ -1,0 +1,14 @@
+# Integrationsbericht
+
+**Was war kaputt:** Nichts. Ich habe `board.js`, `index.html` und den Vertrag gegeneinander gelesen und keine Abweichung gefunden.
+- Ein leeres Feld ist in der Engine `0`. `board.js` zeigt es als leeren Text an und behandelt es bei der Konflikt- und Lösungsprüfung als leer.
+- Alle `data-*`-Attribute aus dem Vertrag sind vorhanden: 81 Felder mit `data-index`, die Tasten `data-digit` 0–9 und die drei `data-stufe`-Buttons.
+- Das Rätsel kommt per `fetch('api/neu?stufe=…')`, die Konflikte werden mit der Klasse `konflikt` markiert, und die Auswahl hat die Klasse `selected`. Die Klasse `geloest` landet auf `body`.
+
+**Was ich geändert habe:** Nichts. Keine Datei wurde angefasst.
+
+**Prüfung:**
+- `python ../../../orchestrator/ui_check.py .`: alle 26 Prüfungen OK. Das umfasst Raster, Auswahl, Eingabe per Klick, Tastatur, Entf und Rücktaste, Pfeiltasten, Schutz der Vorgaben, Konflikte, die drei Stufen, vollständiges Ausfüllen und Sieg-Erkennung.
+- `python test_spiel.py`: A1 bis A4 OK, "Alle Tests erfolgreich", Exit-Code 0.
+
+Das Terrazzo-Design habe ich nicht verändert. Das Aussehen habe ich nicht beurteilt, nur die Bedienung geprüft.

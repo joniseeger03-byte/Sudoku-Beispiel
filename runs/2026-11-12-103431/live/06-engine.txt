@@ -1,0 +1,150 @@
+```python
+"""engine.py - Sudoku-Engine (nur Python-Standardbibliothek)."""
+import json
+import random
+import sys
+
+CLUES = {"leicht": 38, "mittel": 32, "schwer": 26}
+
+_FULL = 0x1FF  # Bits 0..8 für die Ziffern 1..9
+
+
+def _box(i):
+    return (i // 27) * 3 + (i % 9) // 3
+
+
+def _search(grid, limit, randomize=False):
+    """Backtracking mit MRV-Heuristik. Gibt bis zu `limit` Lösungen zurück."""
+    if limit <= 0 or len(grid) != 81:
+        return []
+    rows = [0] * 9
+    cols = [0] * 9
+    boxes = [0] * 9
+    empties = []
+    for i, v in enumerate(grid):
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0 or v > 9:
+            return []
+        if v == 0:
+            empties.append(i)
+            continue
+        bit = 1 << (v - 1)
+        r, c, b = i // 9, i % 9, _box(i)
+        if rows[r] & bit or cols[c] & bit or boxes[b] & bit:
+            return []  # Vorgaben widersprechen sich
+        rows[r] |= bit
+        cols[c] |= bit
+        boxes[b] |= bit
+
+    work = list(grid)
+    found = []
+
+    def rec(remaining):
+        if not remaining:
+            found.append(list(work))
+            return len(found) >= limit
+        best = None
+        best_mask = 0
+        best_n = 10
+        for idx, i in enumerate(remaining):
+            mask = ~(rows[i // 9] | cols[i % 9] | boxes[_box(i)]) & _FULL
+            n = bin(mask).count("1")
+            if n < best_n:
+                best, best_mask, best_n = idx, mask, n
+                if n <= 1:
+                    break
+        if best_n == 0:
+            return False
+        cell = remaining[best]
+        rest = remaining[:best] + remaining[best + 1:]
+        digits = [d for d in range(9) if best_mask >> d & 1]
+        if randomize:
+            random.shuffle(digits)
+        r, c, b = cell // 9, cell % 9, _box(cell)
+        for d in digits:
+            bit = 1 << d
+            rows[r] |= bit
+            cols[c] |= bit
+            boxes[b] |= bit
+            work[cell] = d + 1
+            stop = rec(rest)
+            rows[r] &= ~bit
+            cols[c] &= ~bit
+            boxes[b] &= ~bit
+            work[cell] = 0
+            if stop:
+                return True
+        return False
+
+    rec(empties)
+    return found
+
+
+def solutions(puzzle, limit):
+    """Gibt maximal `limit` Lösungen (Listen mit 81 Zahlen) zurück."""
+    return _search(list(puzzle), limit)
+
+
+def conflicts(grid):
+    """Menge der Indizes (0-80), die mit einem anderen Feld kollidieren."""
+    result = set()
+    units = []
+    for k in range(9):
+        units.append([k * 9 + j for j in range(9)])  # Zeile
+        units.append([j * 9 + k for j in range(9)])  # Spalte
+        br, bc = (k // 3) * 3, (k % 3) * 3
+        units.append([(br + a) * 9 + bc + b for a in range(3) for b in range(3)])
+    for unit in units:
+        seen = {}
+        for i in unit:
+            v = grid[i]
+            if v:
+                seen.setdefault(v, []).append(i)
+        for idxs in seen.values():
+            if len(idxs) > 1:
+                result.update(idxs)
+    return result
+
+
+def _full_grid():
+    return _search([0] * 81, 1, randomize=True)[0]
+
+
+def generate(level):
+    if level not in CLUES:
+        raise ValueError("Unbekannte Stufe: %r" % (level,))
+    target = CLUES[level]
+    while True:
+        solution = _full_grid()
+        puzzle = list(solution)
+        count = 81
+        order = list(range(81))
+        random.shuffle(order)
+        for i in order:
+            if count <= target:
+                break
+            old = puzzle[i]
+            puzzle[i] = 0
+            if len(_search(puzzle, 2)) == 1:
+                count -= 1
+            else:
+                puzzle[i] = old
+        if count == target:
+            return {
+                "puzzle": puzzle,
+                "solution": solution,
+                "clues": count,
+                "level": level,
+            }
+
+
+def main(argv):
+    if len(argv) == 3 and argv[1] == "neu" and argv[2] in CLUES:
+        print(json.dumps(generate(argv[2])))
+        return 0
+    sys.stderr.write("Aufruf: python engine.py neu <leicht|mittel|schwer>\n")
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
+```

@@ -1,0 +1,166 @@
+* { box-sizing: border-box; }
+
+:root {
+  --leinen: #EDE6D6;
+  --indigo: #1F2A44;
+  --a: #F8F3E8;
+  --b: #E2D7BE;
+  --linie: #B9AC8E;
+  --petrol: #0B6464;
+  --ocker: #F2B63C;
+  --bezug: #F6E2AE;
+  --gleich: #E9C46A;
+  --karmin: #C0272D;
+  --steg: var(--indigo);
+}
+
+body.geloest {
+  --steg: #0B6464;
+  --indigo: #0B6464;
+  background: #DDEBDD;
+}
+
+html, body { margin: 0; }
+
+body {
+  background: var(--leinen);
+  color: var(--indigo);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.seite {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 12px 24px;
+}
+
+.titel {
+  background: var(--indigo);
+  color: #F8F3E8;
+  padding: 8px 12px;
+  margin: 0 -12px 12px;
+}
+.titel h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.stufen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stufe {
+  min-height: 44px;
+  background: var(--b);
+  color: var(--indigo);
+  border: 2px solid var(--indigo);
+  font: inherit;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.stufe.aktiv { background: var(--ocker); }
+
+.meldung {
+  min-height: 1.4em;
+  margin: 6px 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.brett {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  aspect-ratio: 1;
+  width: 100%;
+  border: 4px solid var(--indigo);
+  background: var(--indigo);
+}
+
+.feld {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+  font-size: min(5.5vmin, 31px);
+  font-weight: 700;
+  cursor: default;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+}
+.feld.block-a { background-color: var(--a); }
+.feld.block-b { background-color: var(--b); }
+.feld.steg-r { border-right: 2px solid var(--steg); }
+.feld.steg-u { border-bottom: 2px solid var(--steg); }
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+
+.feld.vorgabe { color: var(--indigo); font-weight: 800; }
+.feld.eigen { color: var(--petrol); font-weight: 500; font-size: min(5vmin, 28px); }
+
+.feld.bezug { background-color: var(--bezug); }
+.feld.gleich { background-color: var(--gleich); }
+.feld.gewaehlt {
+  background-color: var(--ocker);
+  color: var(--indigo);
+  outline: 3px solid var(--indigo);
+  outline-offset: -3px;
+}
+.feld.konflikt {
+  background-color: var(--karmin);
+  background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) 3px, transparent 3px, transparent 6px);
+  color: #fff;
+}
+.feld:focus { outline: none; }
+.feld.gewaehlt:focus { outline: 3px solid var(--indigo); outline-offset: -3px; }
+
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.ziffer {
+  min-height: 48px;
+  background: var(--a);
+  color: var(--indigo);
+  border: 2px solid var(--indigo);
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ziffer:active { background: var(--ocker); }
+.ziffer.loeschen { border-color: var(--karmin); color: var(--karmin); }
+
+.stufe:focus-visible, .ziffer:focus-visible, .feld:focus-visible {
+  outline: 3px solid var(--karmin);
+  outline-offset: 2px;
+}
+
+.sieg {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--petrol);
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.sieg[hidden] { display: none; }
+
+@media (min-width: 900px) {
+  body { padding-top: 32px; }
+}

@@ -1,0 +1,33 @@
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\runs\2026-11-12-103431\ergebnis\board.js
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\runs\2026-11-12-103431\ergebnis\index.html
+
+
+▶ Bash: python ../../../orchestrator/ui_check.py .
+
+
+▶ Bash: python test_spiel.py
+
+
+▶ Grep: \.(konflikt|gewaehlt|bezug|gleich|vorgabe|eigen|geloest|aktiv|steg-r|steg-u|block-a|block-b)\b
+
+# Integrationsbericht
+
+## Was war kaputt
+Nichts. Ich habe `board.js`, `index.html` und den Vertrag verglichen und keine Unstimmigkeiten gefunden:
+- **Leere Felder:** Die Engine liefert 0, `board.js` zeigt bei 0 einen leeren Text (`v ? String(v) : ''`) und behandelt `given` über `v !== 0`.
+- **Abruf:** `fetch('api/neu?stufe=…')` ist relativ zur Seite, und die Daten werden über `data.puzzle` gelesen, wie im Vertrag.
+- **Data-Attribute:** Felder mit `data-index` 0–80, Ziffern-Buttons mit `data-digit` 1–9 und 0 zum Löschen, Stufen-Buttons mit `data-stufe`.
+- **Klassen und Tastatur:** Die Klassen `konflikt` und `geloest` werden gesetzt, und die Tastatur läuft über `keydown` auf `document`.
+- **CSS:** Die Zustandsklassen aus `board.js` (`konflikt`, `gewaehlt`, `bezug`, `gleich`, `vorgabe`, `eigen`, `aktiv`, `block-a`, `block-b`, `steg-r`, `steg-u`) kommen alle in `style.css` vor. `geloest` habe ich nicht eigens gesucht, weil die Suche nur eine Gesamtzahl von 13 Treffern lieferte. Ob jede Klasse einzeln vorkommt und die Farben der Designvorgabe entsprechen, habe ich nicht geprüft.
+
+## Was ich geändert habe
+Keine Änderungen, es gab nichts zu reparieren. Das Design (Bauhaus-Webstuhl) blieb unangetastet, `engine.py` und `test_spiel.py` ebenfalls, und ich habe keine neuen Dateien angelegt.
+
+## Prüfergebnis
+- `python ../../../orchestrator/ui_check.py .`: alle 26 Prüfungen OK. Dazu gehören das Raster, Klick und Tastatur, Löschen, Pfeiltasten, geschützte Vorgaben, Konflikt-Markierung, alle drei Stufen und die Siegerkennung.
+- `python test_spiel.py`: A1–A4 OK, "Alle Tests bestanden in 1.59s".
+
+Eine Harness-Meldung mit Fehlern lag nicht bei. Das responsive Layout (A13) und die Barrierefreiheit (A14) habe ich nicht gesondert geprüft. Dafür gibt es keinen automatischen Check, ich habe nur gesehen, dass `index.html` und `board.js` ARIA-Attribute setzen.

@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+"""
+test_spiel.py – prüft die Sudoku‑Engine (engine.py) gemäß Spezifikation.
+
+Nur Standardbibliothek wird benutzt.
+Bei einem Fehler wird sofort mit Exit‑Code 1 abgebrochen.
+"""
+
+import sys
+import os
+import json
+import subprocess
+import ast
+
+# -------------------------------------------------------------
+# Hilfsfunktionen
+# -------------------------------------------------------------
+def fail(msg: str) -> None:
+    """Gibt Fehlermeldung aus und beendet das Programm."""
+    print(msg)
+    sys.exit(1)
+
+def ok(msg: str) -> None:
+    """Gibt Bestätigung aus."""
+    print(msg)
+
+def import_is_stdlib(module_name: str) -> bool:
+    """Gibt True zurück, wenn das Modul zur Standardbibliothek gehört."""
+    stdlib = getattr(sys, "stdlib_module_names", None)
+    if stdlib is not None:
+        return module_name in stdlib or module_name in sys.builtin_module_names
+    # Fallback für Python < 3.10
+    if module_name in sys.builtin_module_names:
+        return True
+    try:
+        import importlib.util
+        spec = importlib.util.find_spec(module_name)
+    except Exception:
+        return False
+    if spec is None or spec.origin is None:
+        return False
+    if spec.origin in ("built-in", "frozen"):
+        return True
+    stdlib_path = os.path.dirname(os.__file__)
+    origin = os.path.normcase(os.path.abspath(spec.origin))
+    return (origin.startswith(os.path.normcase(stdlib_path))
+            and "site-packages" not in origin)
+
+# -------------------------------------------------------------
+# 1. A1 – Engine‑Unabhängigkeit (nur Standardbibliothek)
+# -------------------------------------------------------------
+def test_a1():
+    with open("engine.py", "r", encoding="utf-8") as f:
+        tree = ast.parse(f.read(), filename="engine.py")
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if not import_is_stdlib(alias.name.split('.')[0]):
+                    fail(f"A1 – FEHLER: Import von Nicht‑Stdlib‑Modul '{alias.name}'")
+        elif isinstance(node, ast.ImportFrom):
+            if node.level > 0:
+                fail("A1 – FEHLER: Relativer Import in engine.py")
+            mod = node.module
+            if mod is None:
+                continue
+            if not import_is_stdlib(mod.split('.')[0]):
+                fail(f"A1 – FEHLER: ImportFrom von Nicht‑Stdlib‑Modul '{mod}'")
+    ok("A1 – OK")
+
+# -------------------------------------------------------------
+# 2. A2 – Richtige Hinweis‑Zahl
+# -------------------------------------------------------------
+def test_a2():
+    import engine
+
+    for level in engine.CLUES.keys():
+        for i in range(10):
+            data = engine.generate(level)
+            clues = data.get("clues")
+            if clues != engine.CLUES[level]:
+                fail(f"A2 – FEHLER: Level '{level}' Puzzle {i+1} hat clues={clues}, erwartet {engine.CLUES[level]}")
+            real = sum(1 for v in data["puzzle"] if v != 0)
+            if real != engine.CLUES[level]:
+                fail(f"A2 – FEHLER: Level '{level}' Puzzle {i+1} hat {real} gefüllte Felder, erwartet {engine.CLUES[level]}")
+    ok("A2 – OK")
+
+# -------------------------------------------------------------
+# 3. A3 – Eindeutige Lösung
+# -------------------------------------------------------------
+def test_a3():
+    import engine
+
+    for level in engine.CLUES.keys():
+        for i in range(10):
+            data = engine.generate(level)
+            puzzle = data["puzzle"]
+            sols = engine.solutions(puzzle, 2)
+            if len(sols) != 1:
+                fail(f"A3 – FEHLER: Level '{level}' Puzzle {i+1} hat {len(sols)} Lösungen (erwartet 1)")
+    ok("A3 – OK")
+
+# -------------------------------------------------------------
+# 4. A4 – Korrektes JSON‑CLI
+# -------------------------------------------------------------
+def test_a4():
+    import engine
+
+    for level in engine.CLUES.keys():
+        cmd = [sys.executable, "engine.py", "neu", level]
+        try:
+            out = subprocess.check_output(cmd, universal_newlines=True, timeout=60)
+        except subprocess.CalledProcessError as e:
+            fail(f"A4 – FEHLER: CLI Rückgabe fehlerhaft für level '{level}': {e}")
+        except Exception as e:
+            fail(f"A4 – FEHLER: Ausführung von CLI fehlgeschlagen für level '{level}': {e}")
+
+        try:
+            data = json.loads(out)
+        except json.JSONDecodeError as e:
+            fail(f"A4 – FEHLER: Ausgabe ist kein gültiges JSON für level '{level}': {e}")
+
+        required_keys = {"puzzle", "solution", "clues", "level"}
+        if not required_keys.issubset(data.keys()):
+            fehl = required_keys - data.keys()
+            fail(f"A4 – FEHLER: Fehlende Schlüssel {fehl} in CLI‑Ausgabe für level '{level}'")
+
+        if data["level"] != level:
+            fail(f"A4 – FEHLER: Level‑Feld stimmt nicht (got '{data['level']}', expected '{level}')")
+
+        if len(data["puzzle"]) != 81 or len(data["solution"]) != 81:
+            fail(f"A4 – FEHLER: Puzzle/Solution Länge ist nicht 81 für level '{level}'")
+        if data["clues"] != engine.CLUES[level]:
+            fail(f"A4 – FEHLER: clues Feld {data['clues']} ≠ erwartete {engine.CLUES[level]} für level '{level}'")
+    ok("A4 – OK")
+
+# -------------------------------------------------------------
+# Hauptlauf
+# -------------------------------------------------------------
+if __name__ == "__main__":
+    test_a1()
+    test_a2()
+    test_a3()
+    test_a4()
+    ok("Alle Tests erfolgreich – Exit‑Code 0")
+    sys.exit(0)

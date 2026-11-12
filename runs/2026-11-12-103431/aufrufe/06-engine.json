@@ -1,0 +1,38 @@
+{
+ "id": "06-engine",
+ "knoten": "engine",
+ "runde": 1,
+ "status": "ok",
+ "start": 1794476189.0542285,
+ "anbieter": "claude",
+ "modell": "sonnet",
+ "prompt_datei": "prompts/engine.md",
+ "prompt": "Du bist der Engine-Agent in einem Team, das ein Browser-Sudoku baut.\nSetze aus der Spezifikation unten nur die Datei engine.py um. Die Oberfläche und die Tests schreiben andere Agenten.\n\n- Halte dich exakt an den Vertrag in der Spezifikation: Namen, Signaturen, Rückgabetypen und die Werte in `CLUES`.\n- Nutze nur die Python-Standardbibliothek.\n- Jedes Rätsel muss genau eine Lösung haben und genau `CLUES[level]` Hinweise zeigen. Ein Rätsel soll in unter 5 Sekunden entstehen.\n\nAntworte nur mit einem einzigen Python-Codeblock, der die komplette Datei engine.py enthält.",
+ "kontext": [
+  {
+   "name": "03-spezifikation.md",
+   "quelle": "runs/2026-11-12-103431/03-spezifikation.md",
+   "text": "## Spezifikation (Markdown)\n\n### 1. Überblick\nEntwicklung eines komplett browser‑basierten Sudoku‑Spiels ohne Backend.  \nDie Anwendung besteht aus:\n\n| Komponente | Aufgabe |\n|------------|---------|\n| **engine.py** | Generiert Sudokus, prüft Lösungen und Konflikte – rein Python‑Standardbibliothek. |\n| **index.html / board.js / style.css** | UI im Browser, lädt Rätsel via `fetch('api/neu?stufe=…')`. |\n| **test_spiel.py** | Automatisierte Tests, Exit‑Code ≠ 0 bei Fehler. |\n\nAlle Anforderungen aus dem Auftrag, der Recherche und den Prüfungseinwänden werden berücksichtigt.\n\n---\n\n### 2. Vertrag  \n\n> **engine.py nutzt nur die Python-Standardbibliothek.**  \n> **`CLUES = {\"leicht\": 38, \"mittel\": 32, \"schwer\": 26}`** gibt die Hinweiszahl je Stufe an.  \n> **`generate(level)`** liefert ein `dict` mit den Schlüsseln `puzzle`, `solution`, `clues` und `level`.  \n> * `puzzle` & `solution` sind Listen mit 81 Zahlen (0 = leer).  \n> * `clues` ist die Anzahl der Nicht‑Null‑Zahlen in `puzzle` und muss exakt `CLUES[level]` sein.  \n> **`solutions(puzzle, limit)`** gibt maximal `limit` Lösungen zurück.  \n> **`conflicts(grid)`** liefert ein `set` der Indizes (0‑80), die in Zeile, Spalte oder Block mit einem anderen Feld kollidieren.  \n> **`python engine.py neu <stufe>`** gibt das Ergebnis von `generate` als JSON aus.  \n> **`index.html`, `board.js`, `style.css`** bilden die Oberfläche. `board.js` holt ein Rätsel mit `fetch('api/neu?stufe=mittel')` (relativ zur Seite) und verarbeitet das gleiche JSON.  \n> **UI‑Vertrag:**  \n> * Jedes der 81 Felder ist ein Element mit `data-index=\"0\"` … `\"80\"`. Der Inhalt ist die Ziffer (kein `<input>`).  \n> * Ziffern‑Buttons tragen `data-digit=\"1\"` … `\"9\"`, der Lösch‑Button `data-digit=\"0\"`.  \n> * Drei Schwierigkeits‑Buttons besitzen `data-stufe=\"leicht\"`, `\"mittel\"` und `\"schwer\"` und starten sofort ein neues Rätsel.  \n> * Tastatureingaben (1‑9, Pfeiltasten, Entf, Rücktaste) werden über `keydown` auf `document` verarbeitet.  \n> * Das aktuell gewählte Feld erhält eine eigene Hervorhebungs‑Klasse.  \n> * 3×3‑Blöcke sind durch dickere Linien bzw. größere Abstände erkennbar.  \n> * Felder im Konflikt erhalten die Klasse `konflikt`.  \n> * Bei vollständiger, korrekter Lösung trägt das `<body>` die Klasse `geloest`.  \n> **`test_spiel.py`** wird mit `python test_spiel.py` ausgeführt und beendet bei jedem Fehler mit einem Exit‑Code ≠ 0.\n\n---\n\n### 3. Akzeptanzkriterien  \n\n| Kriterium | Beschreibung | Hinweis |\n|-----------|--------------|--------|\n| **A1 – Generator‑Korrektheit** | `engine.py generate(level)` liefert ein Puzzle mit exakt `CLUES[level]` vorgegebenen Ziffern und eine gültige Lösung. | Test prüft `len([v for v in puzzle if v!=0]) == CLUES[level]` und dass `solutions(puzzle, 2)` = 1. |\n| **A2 – Eindeutige Lösung** | Für jedes generierte Puzzle gibt `solutions(puzzle, 2)` **nur** eine Lösung zurück. | Limit = 2, Rückgabe‑Länge = 1. |\n| **A3 – Konflikt‑Erkennung** | `conflicts(grid)` liefert exakt die Indizes aller Zellen, die Regelverletzungen (Zeile, Spalte, Block) enthalten. | Verglichen mit einer Referenz‑Implementierung. |\n| **A4 – CLI‑Ausgabe** | `python engine.py neu mittel` gibt ein gültiges JSON‑Objekt (wie von `generate`) aus und beendet mit Exit‑Code 0. | JSON‑Schema‑Validierung. |\n| **A5 – UI‑Initialisierung** | Beim Laden von `index.html` wird ein Puzzle via `fetch('api/neu?stufe=mittel')` abgerufen und korrekt im Grid angezeigt. | Feld‑`data-index`‑Werte entsprechen den erhaltenen Zahlen. |\n| **A6 – Feld‑Interaktion** | Klick auf ein leeres Feld setzt den Fokus; Klick auf einen Ziffern‑Button (`data-digit`) trägt die Ziffer ins Feld ein; `data-digit=\"0\"` löscht den Inhalt. | Visuelle Fokus‑Klasse vorhanden, `data-digit` wirkt. |\n| **A7 – Tastatur‑Steuerung** | Eingabe von 1‑9, Pfeiltasten, Entf und Rücktaste verändert das fokussierte Feld wie bei den Buttons. | `keydown`‑Handler testet. |\n| **A8 – Konflikt‑Highlighting** | Nach jeder Eingabe werden alle konflikt‑betroffenen Zellen mit der Klasse `konflikt` markiert. | `conflicts(currentGrid)` wird aufgerufen, Klassen‑Update geprüft. |\n| **A9 – Lösungs‑Erkennung** | Sobald das Puzzle vollständig und konfliktfrei ist, bekommt `<body>` die Klasse `geloest`. | Test prüft Klasse nach korrekter Eingabe. |\n| **A10 – Schwierigkeits‑Buttons** | Klick auf einen Button mit `data-stufe` startet sofort ein neues Puzzle der entsprechenden Stufe und aktualisiert das Grid. | Netzwerk‑Aufruf und UI‑Refresh verifiziert. |\n| **A11 – Test‑Suite** | `test_spiel.py` führt mindestens die Tests A1‑A10 aus und beendet mit Exit‑Code 0, wenn alles erfolgreich ist. | CI‑Kompatibel. |\n| **A12 – Performance‑Grenze** | Das Generieren eines „schwer“-Rätsels (inkl. Eindeutigkeitsprüfung) dauert im Browser ≤ 2 Sekunden auf einem durchschnittlichen Desktop‑PC. | Zeitmessung im Test. |\n| **A13 – Responsives Layout** | Das Grid skaliert korrekt auf Bildschirmbreiten von 320 px bis 1920 px, 3×3‑Blöcke bleiben erkennbar. | Visueller Smoke‑Test. |\n| **A14 – Barrierefreiheit** | Alle interaktiven Elemente sind per Tab‑Navigation erreichbar und besitzen sinnvolle `aria-` Attribute. | Axe‑Linter‑Durchlauf ohne Fehler. |\n\nErfüllte Kriterien A1‑A14 gelten als **Abnahme** des Projekts."
+  }
+ ],
+ "anfrage": {
+  "befehl": [
+   "claude",
+   "-p",
+   "--output-format",
+   "stream-json",
+   "--verbose",
+   "--no-session-persistence",
+   "--model",
+   "sonnet",
+   "--strict-mcp-config",
+   "--setting-sources",
+   "project"
+  ],
+  "werkzeuge": [],
+  "modell": "sonnet"
+ },
+ "kosten_usd": 0.0612495,
+ "dauer": 16.7,
+ "antwort_zeichen": 4144
+}

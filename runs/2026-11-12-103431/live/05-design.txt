@@ -1,0 +1,75 @@
+
+▶ ToolSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+
+▶ WebSearch: 
+
+# Bauhaus-Webstuhl
+
+## Entscheidung
+Das Brett wird als gewebter Wandteppich aus Wollfeldern gestaltet, wie ihn die Bauhaus-Weberei kannte: geometrische Farbflächen mit klarer Struktur. Die 3×3-Blöcke sind abwechselnd hell und dunkler getönt, wie ein Schachbrett aus Garn. Dadurch bleiben sie auch bei 320 px Breite ohne feine Linien erkennbar. Auswahl und Konflikt bekommen kräftige Signalfarben, der Konflikt zusätzlich ein Streifenmuster, damit er nicht nur über die Farbe lesbar ist. Alles lässt sich mit CSS-Farben, Rahmen und `repeating-linear-gradient` umsetzen, ohne Dateien oder Schriften. Die Richtung unterscheidet sich deutlich von den bisherigen Designs: Sie ist hell, textil und farbig statt nachtdunkel, kartoniert oder zweifarbig gedruckt.
+
+## Vorgaben für die Oberfläche
+**Farben**
+- Seitengrund (Leinen): `#EDE6D6`
+- Rahmen und Stege, Haupttinte (Indigo): `#1F2A44`
+- Blockfläche A: `#F8F3E8`
+- Blockfläche B: `#E2D7BE`
+- Feine Zellenlinien: `#B9AC8E`
+- Vorgegebene Ziffern: `#1F2A44`
+- Eigene Eingabe (Petrolgrün): `#0B6464`
+- Ausgewählt (Ocker): Fläche `#F2B63C`, Ziffer `#1F2A44`, Rahmen innen 3 px `#1F2A44`
+- Gleiche Zeile, Spalte und Block wie die Auswahl: `#F6E2AE`
+- Gleiche Ziffer wie die Auswahl: `#E9C46A`
+- Konflikt (Karmin): Fläche `#C0272D`, Ziffer `#FFFFFF`, dazu Diagonalstreifen `rgba(255,255,255,.25)`, 45°, 6 px
+- Gelöst: Stege und Rahmen wechseln auf `#0B6464`, Hintergrund auf `#DDEBDD`
+
+**Schrift**
+- Nur Systemschriften: `"Trebuchet MS", "Segoe UI", system-ui, sans-serif`.
+- Ziffern im Brett: Gewicht 700, ca. 5,5 vmin groß.
+- Vorgegebene Ziffern: Gewicht 800.
+- Eigene Ziffern: Gewicht 500 und leicht kleiner. So unterscheiden sie sich auch ohne Farbe.
+- Titel und Beschriftungen: Großbuchstaben mit 0,12 em Laufweite.
+
+**Anordnung**
+- Ein einspaltiges Layout, höchstens 560 px breit und zentriert.
+- Oben steht ein schmaler Titelstreifen in Indigo mit hellem Text.
+- Darunter folgt die Stufenwahl als drei gleich breite Kacheln nebeneinander. Sie sind mindestens 44 px hoch. Die aktive Stufe ist Ocker, die anderen sind Blockfläche B mit 2 px Indigo-Rahmen.
+- Das Brett ist quadratisch (`aspect-ratio: 1`) und füllt die Breite abzüglich 12 px Rand. Der Außenrahmen ist 4 px Indigo. Die Blockgrenzen entstehen durch die Tönung A/B und zusätzlich durch 2 px Indigo-Stege. Die Zellenlinien sind 1 px.
+- Das Ziffernfeld liegt unter dem Brett in einer Reihe aus 5 plus 5 Kacheln (1–5, 6–9 und Löschen). Jede Kachel ist mindestens 48 px groß und hat Indigo-Rahmen und Blockfläche A. Beim Antippen wird sie Ocker. Die Lösch-Kachel trägt ein „✕“ und ist in Karmin umrandet.
+- Auf breiten Bildschirmen (ab 900 px) bleibt das Layout gleich, nur der Seitengrund wird größer.
+
+**Stimmung**
+Warm, handwerklich, geordnet und ruhig. Es gibt keine Schatten und keine Verläufe außer dem Streifenmuster. Alles besteht aus klaren Flächen und Kanten.
+
+**Zustände**
+- **Vorgegeben:** fette Indigo-Ziffer auf der Blockfläche, nicht anklickbar zu ändern, Cursor normal.
+- **Eigene Eingabe:** Petrolgrüne Ziffer in mittlerem Gewicht auf der Blockfläche.
+- **Ausgewählt:** Ocker-Fläche mit 3 px Indigo-Innenrand. Die Zeile, Spalte und der Block bekommen `#F6E2AE`, gleiche Ziffern `#E9C46A`.
+- **Konflikt (`konflikt`):** Karmin-Fläche mit weißer Ziffer und Streifenmuster. Wenn ein Konfliktfeld zugleich ausgewählt ist, behält es Karmin und bekommt den 3 px Indigo-Innenrand.
+
+## Geprüfte Optionen
+- **Bauhaus-Webstuhl (gewählt):** Gewebte Farbflächen mit abwechselnd getönten Blöcken. Sie gewann, weil die Blockstruktur über Flächen statt über Linien lesbar wird und die Zustände klar getrennt sind.
+- **Bahnhofs-Leitsystem (Fahrgastinformation):** Weiße Ziffern auf kräftigem Grün oder Blau mit gelben Leitstreifen nach Vorbild japanischer Bahnhöfe. Verworfen, weil es der bisherigen Anzeigetafel bei Nacht zu nah kommt und seine Stärke in der Beschilderung statt im Raster liegt.
+- **Aktuelle Web-Strömungen (Bento und modulare Raster, große Typografie):** Abgerundete Kacheln und überdimensionierte Schrift. Verworfen, weil das eher eine Modeströmung ohne eigene Bildsprache ist. Der Bento-Gedanke steckt aber in den getönten Blockflächen.
+- **Taktile Leitplatten (Tenji-Blöcke):** Gelbe Noppen- und Rillenmuster als Konfliktzeichen. Als Idee übernommen, nämlich das Streifenmuster beim Konflikt, aber nicht als Hauptrichtung, weil es als ganze Gestaltung zu schmal ist.
+
+## Quellen
+- https://tilda.education/en/web-design-trends-2026
+- https://line25.com/articles/web-design-trends-2026/
+- https://bubble.io/blog/web-design-trends/
+- https://www.figma.com/resource-library/web-design-trends/
+- https://shop.bauhaus-movement.com/gunta-stoelzl-johannes-itten-textile-universes
+- https://www.breuninger.com/at/editorial/einrichtungsstile/bauhaus/
+- https://www.sikkens.de/content/dam/akzonobel-painters/sikkens/de/de/broschueren-download/rasch_17007_bauhaus%20broschuere_RZ_homepage_ES.pdf
+- https://en.wikipedia.org/wiki/Running_in_board
+- https://planitmetro.com/?p=7301
+- https://www.jrpass.com/blog/tenji-blocks-the-story-behind-japan-s-tactile-paving
+
+Alle Adressen habe ich nur in den Suchergebnissen gesehen, keine habe ich selbst geöffnet.

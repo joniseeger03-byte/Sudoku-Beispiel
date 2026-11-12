@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Terrazzo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="halle">
+  <h1 class="titel">Sudoku</h1>
+
+  <div class="stufen" role="group" aria-label="Schwierigkeit">
+    <button type="button" class="stufe" data-stufe="leicht">leicht</button>
+    <button type="button" class="stufe aktiv" data-stufe="mittel">mittel</button>
+    <button type="button" class="stufe" data-stufe="schwer">schwer</button>
+  </div>
+
+  <div class="rahmen">
+    <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+  </div>
+
+  <p id="meldung" class="meldung" role="status" aria-live="polite"></p>
+
+  <div class="ziffernfeld" role="group" aria-label="Ziffernfeld">
+    <button type="button" class="taste" data-digit="1">1</button>
+    <button type="button" class="taste" data-digit="2">2</button>
+    <button type="button" class="taste" data-digit="3">3</button>
+    <button type="button" class="taste" data-digit="4">4</button>
+    <button type="button" class="taste" data-digit="5">5</button>
+    <button type="button" class="taste" data-digit="6">6</button>
+    <button type="button" class="taste" data-digit="7">7</button>
+    <button type="button" class="taste" data-digit="8">8</button>
+    <button type="button" class="taste" data-digit="9">9</button>
+    <button type="button" class="taste loeschen" data-digit="0" aria-label="Löschen">⌫</button>
+  </div>
+
+  <div id="sieg" class="sieg" role="alert">Geschafft! Das Rätsel ist richtig gelöst.</div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>

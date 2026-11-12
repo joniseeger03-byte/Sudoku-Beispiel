@@ -1,0 +1,367 @@
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Bauhaus-Webstuhl</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="seite">
+  <header class="titel"><h1>Sudoku</h1></header>
+
+  <div class="stufen" role="group" aria-label="Schwierigkeitsstufe">
+    <button type="button" class="stufe" data-stufe="leicht" aria-pressed="false">Leicht</button>
+    <button type="button" class="stufe" data-stufe="mittel" aria-pressed="true">Mittel</button>
+    <button type="button" class="stufe" data-stufe="schwer" aria-pressed="false">Schwer</button>
+  </div>
+
+  <p id="meldung" class="meldung" role="status" aria-live="polite"></p>
+
+  <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+
+  <div class="ziffernfeld" role="group" aria-label="Ziffernfeld">
+    <button type="button" class="ziffer" data-digit="1" aria-label="Ziffer 1">1</button>
+    <button type="button" class="ziffer" data-digit="2" aria-label="Ziffer 2">2</button>
+    <button type="button" class="ziffer" data-digit="3" aria-label="Ziffer 3">3</button>
+    <button type="button" class="ziffer" data-digit="4" aria-label="Ziffer 4">4</button>
+    <button type="button" class="ziffer" data-digit="5" aria-label="Ziffer 5">5</button>
+    <button type="button" class="ziffer" data-digit="6" aria-label="Ziffer 6">6</button>
+    <button type="button" class="ziffer" data-digit="7" aria-label="Ziffer 7">7</button>
+    <button type="button" class="ziffer" data-digit="8" aria-label="Ziffer 8">8</button>
+    <button type="button" class="ziffer" data-digit="9" aria-label="Ziffer 9">9</button>
+    <button type="button" class="ziffer loeschen" data-digit="0" aria-label="Feld löschen">✕</button>
+  </div>
+
+  <div id="sieg" class="sieg" role="alert" hidden>Geschafft! Das Rätsel ist richtig gelöst.</div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>
+```
+
+```javascript
+(function () {
+  'use strict';
+
+  var brett = document.getElementById('brett');
+  var meldung = document.getElementById('meldung');
+  var sieg = document.getElementById('sieg');
+  var cells = [];
+  var puzzle = new Array(81).fill(0);
+  var grid = new Array(81).fill(0);
+  var given = new Array(81).fill(false);
+  var selected = 0;
+  var stufe = 'mittel';
+  var token = 0;
+
+  for (var i = 0; i < 81; i++) {
+    var r = Math.floor(i / 9), c = i % 9;
+    var el = document.createElement('div');
+    el.className = 'feld';
+    el.setAttribute('data-index', String(i));
+    el.setAttribute('role', 'gridcell');
+    el.setAttribute('tabindex', i === 0 ? '0' : '-1');
+    if ((Math.floor(r / 3) + Math.floor(c / 3)) % 2 === 0) el.classList.add('block-a');
+    else el.classList.add('block-b');
+    if (c === 2 || c === 5) el.classList.add('steg-r');
+    if (r === 2 || r === 5) el.classList.add('steg-u');
+    brett.appendChild(el);
+    cells.push(el);
+  }
+
+  function conflicts(g) {
+    var bad = new Set();
+    var groups = [];
+    for (var k = 0; k < 9; k++) {
+      var row = [], col = [], blk = [];
+      for (var m = 0; m < 9; m++) {
+        row.push(k * 9 + m);
+        col.push(m * 9 + k);
+        blk.push((Math.floor(k / 3) * 3 + Math.floor(m / 3)) * 9 + (k % 3) * 3 + (m % 3));
+      }
+      groups.push(row, col, blk);
+    }
+    groups.forEach(function (grp) {
+      var seen = {};
+      grp.forEach(function (idx) {
+        var v = g[idx];
+        if (!v) return;
+        (seen[v] = seen[v] || []).push(idx);
+      });
+      Object.keys(seen).forEach(function (v) {
+        if (seen[v].length > 1) seen[v].forEach(function (idx) { bad.add(idx); });
+      });
+    });
+    return bad;
+  }
+
+  function render() {
+    var bad = conflicts(grid);
+    var sr = Math.floor(selected / 9), sc = selected % 9;
+    var sb = Math.floor(sr / 3) * 3 + Math.floor(sc / 3);
+    var sv = grid[selected];
+    var full = true;
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i], v = grid[i];
+      if (!v) full = false;
+      var r = Math.floor(i / 9), c = i % 9;
+      var b = Math.floor(r / 3) * 3 + Math.floor(c / 3);
+      el.textContent = v ? String(v) : '';
+      el.classList.toggle('vorgabe', given[i]);
+      el.classList.toggle('eigen', !given[i] && !!v);
+      el.classList.toggle('konflikt', bad.has(i));
+      el.classList.toggle('gewaehlt', i === selected);
+      el.classList.toggle('bezug', i !== selected && (r === sr || c === sc || b === sb));
+      el.classList.toggle('gleich', i !== selected && !!sv && v === sv);
+      el.setAttribute('tabindex', i === selected ? '0' : '-1');
+      el.setAttribute('aria-selected', i === selected ? 'true' : 'false');
+      el.setAttribute('aria-invalid', bad.has(i) ? 'true' : 'false');
+      el.setAttribute('aria-label', 'Zeile ' + (r + 1) + ', Spalte ' + (c + 1) + ', ' +
+        (v ? v : 'leer') + (given[i] ? ', vorgegeben' : '') + (bad.has(i) ? ', Konflikt' : ''));
+    }
+    var won = full && bad.size === 0;
+    document.body.classList.toggle('geloest', won);
+    sieg.hidden = !won;
+  }
+
+  function select(i) {
+    selected = Math.max(0, Math.min(80, i));
+    render();
+  }
+
+  function setDigit(d) {
+    if (given[selected]) return;
+    grid[selected] = d;
+    render();
+  }
+
+  function load(s) {
+    var my = ++token;
+    stufe = s;
+    document.querySelectorAll('[data-stufe]').forEach(function (b) {
+      var on = b.getAttribute('data-stufe') === s;
+      b.classList.toggle('aktiv', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    meldung.textContent = 'Lade Rätsel …';
+    fetch('api/neu?stufe=' + encodeURIComponent(s))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (my !== token) return;
+        puzzle = data.puzzle.slice();
+        grid = data.puzzle.slice();
+        given = puzzle.map(function (v) { return v !== 0; });
+        meldung.textContent = '';
+        selected = 0;
+        render();
+      })
+      .catch(function () {
+        if (my !== token) return;
+        meldung.textContent = 'Rätsel konnte nicht geladen werden.';
+      });
+  }
+
+  brett.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-index]');
+    if (t) select(parseInt(t.getAttribute('data-index'), 10));
+  });
+
+  document.querySelectorAll('[data-digit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      setDigit(parseInt(b.getAttribute('data-digit'), 10));
+    });
+  });
+
+  document.querySelectorAll('[data-stufe]').forEach(function (b) {
+    b.addEventListener('click', function () { load(b.getAttribute('data-stufe')); });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k >= '1' && k <= '9') { setDigit(parseInt(k, 10)); e.preventDefault(); }
+    else if (k === 'Delete' || k === 'Backspace' || k === '0') { setDigit(0); e.preventDefault(); }
+    else if (k === 'ArrowLeft') { if (selected % 9 > 0) select(selected - 1); e.preventDefault(); }
+    else if (k === 'ArrowRight') { if (selected % 9 < 8) select(selected + 1); e.preventDefault(); }
+    else if (k === 'ArrowUp') { if (selected >= 9) select(selected - 9); e.preventDefault(); }
+    else if (k === 'ArrowDown') { if (selected < 72) select(selected + 9); e.preventDefault(); }
+  });
+
+  render();
+  load('mittel');
+})();
+```
+
+```css
+* { box-sizing: border-box; }
+
+:root {
+  --leinen: #EDE6D6;
+  --indigo: #1F2A44;
+  --a: #F8F3E8;
+  --b: #E2D7BE;
+  --linie: #B9AC8E;
+  --petrol: #0B6464;
+  --ocker: #F2B63C;
+  --bezug: #F6E2AE;
+  --gleich: #E9C46A;
+  --karmin: #C0272D;
+  --steg: var(--indigo);
+}
+
+body.geloest {
+  --steg: #0B6464;
+  --indigo: #0B6464;
+  background: #DDEBDD;
+}
+
+html, body { margin: 0; }
+
+body {
+  background: var(--leinen);
+  color: var(--indigo);
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.seite {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 12px 24px;
+}
+
+.titel {
+  background: var(--indigo);
+  color: #F8F3E8;
+  padding: 8px 12px;
+  margin: 0 -12px 12px;
+}
+.titel h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.stufen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stufe {
+  min-height: 44px;
+  background: var(--b);
+  color: var(--indigo);
+  border: 2px solid var(--indigo);
+  font: inherit;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.stufe.aktiv { background: var(--ocker); }
+
+.meldung {
+  min-height: 1.4em;
+  margin: 6px 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.brett {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  aspect-ratio: 1;
+  width: 100%;
+  border: 4px solid var(--indigo);
+  background: var(--indigo);
+}
+
+.feld {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+  font-size: min(5.5vmin, 31px);
+  font-weight: 700;
+  cursor: default;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+}
+.feld.block-a { background-color: var(--a); }
+.feld.block-b { background-color: var(--b); }
+.feld.steg-r { border-right: 2px solid var(--steg); }
+.feld.steg-u { border-bottom: 2px solid var(--steg); }
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+
+.feld.vorgabe { color: var(--indigo); font-weight: 800; }
+.feld.eigen { color: var(--petrol); font-weight: 500; font-size: min(5vmin, 28px); }
+
+.feld.bezug { background-color: var(--bezug); }
+.feld.gleich { background-color: var(--gleich); }
+.feld.gewaehlt {
+  background-color: var(--ocker);
+  color: var(--indigo);
+  outline: 3px solid var(--indigo);
+  outline-offset: -3px;
+}
+.feld.konflikt {
+  background-color: var(--karmin);
+  background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.25) 0, rgba(255,255,255,.25) 3px, transparent 3px, transparent 6px);
+  color: #fff;
+}
+.feld:focus { outline: none; }
+.feld.gewaehlt:focus { outline: 3px solid var(--indigo); outline-offset: -3px; }
+
+.ziffernfeld {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.ziffer {
+  min-height: 48px;
+  background: var(--a);
+  color: var(--indigo);
+  border: 2px solid var(--indigo);
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ziffer:active { background: var(--ocker); }
+.ziffer.loeschen { border-color: var(--karmin); color: var(--karmin); }
+
+.stufe:focus-visible, .ziffer:focus-visible, .feld:focus-visible {
+  outline: 3px solid var(--karmin);
+  outline-offset: 2px;
+}
+
+.sieg {
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--petrol);
+  color: #fff;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.sieg[hidden] { display: none; }
+
+@media (min-width: 900px) {
+  body { padding-top: 32px; }
+}
+```
