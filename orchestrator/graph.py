@@ -4,7 +4,7 @@ run.py führt diesen Graphen aus, das Dashboard zeichnet ihn.
 
 Knotenarten:
 - "modell"  ein Sprachmodell-Aufruf. Bekommt prompts/<prompt> plus die Kontext-Dateien.
-- "agent"   wie "modell", aber mit Werkzeugen: arbeitet selbst im Worktree (Claude Code).
+- "agent"   wie "modell", aber mit Werkzeugen: arbeitet selbst im Projektordner (Claude Code).
 - "skript"  normaler Code ohne Modell, zum Beispiel das Test-Gate.
 - "mensch"  du.
 

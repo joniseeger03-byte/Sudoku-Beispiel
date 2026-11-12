@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku · Herbarium-Bogen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="karte">
+  <div class="etikett" id="etikett">Sudoku · Stufe: <span id="stufenname">mittel</span></div>
+
+  <div class="reiter" role="group" aria-label="Schwierigkeitsstufe">
+    <button type="button" data-stufe="leicht" tabindex="0" aria-label="Stufe leicht">leicht</button>
+    <button type="button" data-stufe="mittel" tabindex="0" aria-label="Stufe mittel">mittel</button>
+    <button type="button" data-stufe="schwer" tabindex="0" aria-label="Stufe schwer">schwer</button>
+  </div>
+
+  <div class="rahmen">
+    <div class="brett" id="brett" role="grid" aria-label="Sudoku-Brett"></div>
+  </div>
+
+  <p class="meldung" id="meldung" role="status" aria-live="polite"></p>
+
+  <div class="ziffern" role="group" aria-label="Ziffernfeld">
+    <button type="button" data-digit="1" tabindex="0" aria-label="Ziffer 1">1</button>
+    <button type="button" data-digit="2" tabindex="0" aria-label="Ziffer 2">2</button>
+    <button type="button" data-digit="3" tabindex="0" aria-label="Ziffer 3">3</button>
+    <button type="button" data-digit="4" tabindex="0" aria-label="Ziffer 4">4</button>
+    <button type="button" data-digit="5" tabindex="0" aria-label="Ziffer 5">5</button>
+    <button type="button" data-digit="6" tabindex="0" aria-label="Ziffer 6">6</button>
+    <button type="button" data-digit="7" tabindex="0" aria-label="Ziffer 7">7</button>
+    <button type="button" data-digit="8" tabindex="0" aria-label="Ziffer 8">8</button>
+    <button type="button" data-digit="9" tabindex="0" aria-label="Ziffer 9">9</button>
+    <button type="button" data-digit="0" tabindex="0" aria-label="Feld löschen">⌫</button>
+  </div>
+
+  <div class="links">
+    <button type="button" class="textlink" data-hint tabindex="0" aria-label="Hinweis geben">Hinweis (<span id="hinweisrest">3</span>)</button>
+    <button type="button" class="textlink" data-show-solution tabindex="0" aria-label="Lösung anzeigen">Lösung anzeigen</button>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="alert" hidden></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-label="Warnung">
+    <p>Cheat – bist du sicher?</p>
+    <div class="modal-knoepfe">
+      <button type="button" id="modal-nein" tabindex="0" aria-label="Abbrechen">Abbrechen</button>
+      <button type="button" id="modal-ja" tabindex="0" aria-label="Lösung anzeigen bestätigen">Anzeigen</button>
+    </div>
+  </div>
+</div>
+
+<script src="board.js"></script>
+</body>
+</html>

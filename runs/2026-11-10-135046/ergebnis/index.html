@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Rechenheft</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="heft">
+  <header class="kopf">
+    <h1>Sudoku</h1>
+    <div class="timerbox">
+      <span id="timer" class="timer" hidden>00:00</span>
+      <button type="button" id="timer-schalter" class="schalter" aria-pressed="false">Timer</button>
+    </div>
+  </header>
+
+  <div class="spiel">
+    <section class="brettspalte">
+      <div id="banner" class="banner" role="status">✓ Richtig!</div>
+      <div id="board" class="board" role="grid" aria-label="Sudoku-Brett"></div>
+      <div id="zettel" class="zettel" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="steuerung">
+      <nav class="stufen" aria-label="Schwierigkeit">
+        <button type="button" data-stufe="leicht">leicht</button>
+        <button type="button" data-stufe="mittel" class="aktiv">mittel</button>
+        <button type="button" data-stufe="schwer">schwer</button>
+      </nav>
+
+      <div class="werkzeuge">
+        <button type="button" id="undo" class="werkzeug">↶ Undo</button>
+        <button type="button" id="notizen" class="werkzeug" aria-pressed="false">Notizen: Aus</button>
+      </div>
+
+      <div class="ziffernfeld" aria-label="Ziffernfeld">
+        <button type="button" data-digit="1">1</button>
+        <button type="button" data-digit="2">2</button>
+        <button type="button" data-digit="3">3</button>
+        <button type="button" data-digit="4">4</button>
+        <button type="button" data-digit="5">5</button>
+        <button type="button" data-digit="6">6</button>
+        <button type="button" data-digit="7">7</button>
+        <button type="button" data-digit="8">8</button>
+        <button type="button" data-digit="9">9</button>
+        <button type="button" data-digit="0" class="loeschen" aria-label="Löschen">⌫</button>
+      </div>
+      <p id="meldung" class="meldung" role="status"></p>
+    </section>
+  </div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>

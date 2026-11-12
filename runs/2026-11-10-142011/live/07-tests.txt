@@ -1,0 +1,193 @@
+```python
+#!/usr/bin/env python3
+"""
+test_spiel.py – minimal test suite for engine.py
+
+Only the Python standard library is used.  The script aborts with
+sys.exit(1) on the first failure and prints one line per tested
+criterion: “OK <description>” or “FEHLER <description>”.
+"""
+
+import sys
+import json
+import subprocess
+import itertools
+from pathlib import Path
+
+# ----------------------------------------------------------------------
+# Import the engine module (assumed to be in the same directory)
+# ----------------------------------------------------------------------
+try:
+    import engine
+except Exception as e:
+    print(f"FEHLER import engine: {e}")
+    sys.exit(1)
+
+# ----------------------------------------------------------------------
+# Helper utilities
+# ----------------------------------------------------------------------
+def run_cli(level: str):
+    """Run `python engine.py neu <level>` and return the parsed JSON."""
+    cmd = [sys.executable, str(Path(__file__).with_name("engine.py")), "neu", level]
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"CLI call failed (rc={e.returncode}): {e.stderr.strip()}"
+        ) from e
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"CLI output is not valid JSON: {e}") from e
+    return data
+
+
+def check_puzzle_structure(puzzle_dict, level):
+    """Validate the dict returned by generate / CLI."""
+    required_keys = {"puzzle", "solution", "clues", "level"}
+    if set(puzzle_dict) != required_keys:
+        raise AssertionError(f"Missing keys, expected {required_keys}")
+
+    if puzzle_dict["level"] != level:
+        raise AssertionError(f"Level mismatch: {puzzle_dict['level']} != {level}")
+
+    for name in ("puzzle", "solution"):
+        if not isinstance(puzzle_dict[name], list) or len(puzzle_dict[name]) != 81:
+            raise AssertionError(f"{name} must be a list of 81 ints")
+        if any(not isinstance(v, int) or not (0 <= v <= 9) for v in puzzle_dict[name]):
+            raise AssertionError(f"{name} contains invalid values")
+
+    if puzzle_dict["clues"] != sum(1 for v in puzzle_dict["puzzle"] if v != 0):
+        raise AssertionError("Clues field does not match non‑zero count in puzzle")
+
+    if puzzle_dict["clues"] != engine.CLUES[level]:
+        raise AssertionError(
+            f"Clues count {puzzle_dict['clues']} != expected {engine.CLUES[level]}"
+        )
+
+
+def conflict_example():
+    """Return a grid with a known conflict and the expected conflict indices."""
+    # Solved puzzle (taken from a standard source)
+    solved = [
+        5, 3, 4, 6, 7, 8, 9, 1, 2,
+        6, 7, 2, 1, 9, 5, 3, 4, 8,
+        1, 9, 8, 3, 4, 2, 5, 6, 7,
+        8, 5, 9, 7, 6, 1, 4, 2, 3,
+        4, 2, 6, 8, 5, 3, 7, 9, 1,
+        7, 1, 3, 9, 2, 4, 8, 5, 6,
+        9, 6, 1, 5, 3, 7, 2, 8, 4,
+        2, 8, 7, 4, 1, 9, 6, 3, 5,
+        3, 4, 5, 2, 8, 6, 1, 7, 9,
+    ]
+    # Introduce a duplicate '5' in the first row (positions 0 and 4)
+    conflict_grid = solved.copy()
+    conflict_grid[4] = 5  # now row 0 has two fives
+    # Expected conflict indices: both positions of the duplicated value
+    expected = {0, 4}
+    return conflict_grid, expected
+
+
+# ----------------------------------------------------------------------
+# 1. Test CLI invocation for each difficulty level
+# ----------------------------------------------------------------------
+for lvl in engine.CLUES.keys():
+    try:
+        data = run_cli(lvl)
+        check_puzzle_structure(data, lvl)
+    except Exception as e:
+        print(f"FEHLER CLI‑Aufruf / Struktur für Stufe '{lvl}': {e}")
+        sys.exit(1)
+    else:
+        print(f"OK CLI‑Aufruf und Struktur für Stufe '{lvl}'")
+
+# ----------------------------------------------------------------------
+# 2. Test generate() directly (10 puzzles per level)
+# ----------------------------------------------------------------------
+for lvl in engine.CLUES.keys():
+    for i in range(10):
+        try:
+            gen = engine.generate(lvl)
+            check_puzzle_structure(gen, lvl)
+
+            # Verify that the provided solution actually solves the puzzle
+            # (simply compare against engine.solutions with limit=2)
+            sols = engine.solutions(gen["puzzle"], limit=2)
+            if len(sols) != 1:
+                raise AssertionError(
+                    f"Expected exactly one solution, got {len(sols)}"
+                )
+            if sols[0] != gen["solution"]:
+                raise AssertionError("Returned solution does not match 'solution' field")
+        except Exception as e:
+            print(f"FEHLER generate() Test Stufe '{lvl}' Durchlauf {i+1}: {e}")
+            sys.exit(1)
+    print(f"OK generate() – 10 Rätsel für Stufe '{lvl}'")
+
+# ----------------------------------------------------------------------
+# 3. Test conflicts() on a deterministic grid
+# ----------------------------------------------------------------------
+grid, expected_conflicts = conflict_example()
+try:
+    result = engine.conflicts(grid)
+    if not isinstance(result, set):
+        raise AssertionError("conflicts() must return a set")
+    if result != expected_conflicts:
+        raise AssertionError(f"Expected {expected_conflicts}, got {result}")
+except Exception as e:
+    print(f"FEHLER conflicts() – erwartete Konflikte: {e}")
+    sys.exit(1)
+else:
+    print("OK conflicts() – korrektes Konflikt‑Set")
+
+# ----------------------------------------------------------------------
+# 4. Test solutions() limits and uniqueness
+# ----------------------------------------------------------------------
+# a) Full solved grid – should return exactly one solution even with limit 2
+solved_grid = conflict_example()[0]  # use the solved version (without duplicate)
+# fix the duplicate for this test
+solved_grid = [
+    5, 3, 4, 6, 7, 8, 9, 1, 2,
+    6, 7, 2, 1, 9, 5, 3, 4, 8,
+    1, 9, 8, 3, 4, 2, 5, 6, 7,
+    8, 5, 9, 7, 6, 1, 4, 2, 3,
+    4, 2, 6, 8, 5, 3, 7, 9, 1,
+    7, 1, 3, 9, 2, 4, 8, 5, 6,
+    9, 6, 1, 5, 3, 7, 2, 8, 4,
+    2, 8, 7, 4, 1, 9, 6, 3, 5,
+    3, 4, 5, 2, 8, 6, 1, 7, 9,
+]
+try:
+    sols = engine.solutions(solved_grid, limit=2)
+    if len(sols) != 1:
+        raise AssertionError(f"Expected exactly one solution, got {len(sols)}")
+except Exception as e:
+    print(f"FEHLER solutions() – vollständiges Gitter: {e}")
+    sys.exit(1)
+else:
+    print("OK solutions() – vollständiges Gitter liefert genau eine Lösung")
+
+# b) Empty grid – ensure the function respects the limit argument
+empty_grid = [0] * 81
+try:
+    sols = engine.solutions(empty_grid, limit=2)
+    if len(sols) > 2:
+        raise AssertionError("solutions() returned more than the requested limit")
+except Exception as e:
+    print(f"FEHLER solutions() – leeres Gitter mit Limit: {e}")
+    sys.exit(1)
+else:
+    print("OK solutions() – leeres Gitter respektiert Limit")
+
+# ----------------------------------------------------------------------
+# All tests passed
+# ----------------------------------------------------------------------
+print("OK Alle Tests erfolgreich")
+sys.exit(0)
+```

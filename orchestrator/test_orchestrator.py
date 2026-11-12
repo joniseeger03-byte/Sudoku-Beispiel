@@ -60,6 +60,24 @@ class HarnessTest(unittest.TestCase):
         self.assertFalse(run.prueft_oberflaeche("import unittest\nimport engine\n\nclass T(unittest.TestCase):\n"
                                                 "    def test_loesung(self):\n        self.assertEqual(len(engine.generate('leicht')['puzzle']), 81)\n"))
 
+    def test_agent_darf_nur_erlaubte_dateien_aendern(self):
+        with tempfile.TemporaryDirectory() as t:
+            ordner = pathlib.Path(t)
+            for name in ("engine.py", "test_spiel.py", "style.css"):
+                (ordner / name).write_text(f"# {name}\n", encoding="utf-8")
+            meldungen = []
+            lauf = type("L", (), {"harness": lambda self, k, text, **kw: meldungen.append(text)})()
+            with run.nur(lauf, "korrektur", ordner, {"engine.py"}):
+                (ordner / "engine.py").write_text("neu\n", encoding="utf-8")
+                (ordner / "test_spiel.py").write_text("immer grün\n", encoding="utf-8")
+                (ordner / "style.css").unlink()
+                (ordner / "notiz.txt").write_text("x", encoding="utf-8")
+            self.assertEqual((ordner / "engine.py").read_text(encoding="utf-8"), "neu\n")
+            self.assertEqual((ordner / "test_spiel.py").read_text(encoding="utf-8"), "# test_spiel.py\n")
+            self.assertEqual((ordner / "style.css").read_text(encoding="utf-8"), "# style.css\n")
+            self.assertFalse((ordner / "notiz.txt").exists())
+            self.assertEqual(len(meldungen), 3)
+
     def test_urteil(self):
         self.assertEqual(run.urteil("bla\nURTEIL: ok", ["ok", "nacharbeiten"]), "ok")
         self.assertEqual(run.urteil("**URTEIL:** nacharbeiten", ["ok", "nacharbeiten"]), "nacharbeiten")

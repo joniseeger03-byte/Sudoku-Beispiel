@@ -1,6 +1,5 @@
 .env
 __pycache__/
-arbeitsbereich/
 # runs/ enthält die Beispiel-Läufe und kommt ins Repo. Nur das Prozess-Log und Demo-Wiedergaben nicht.
 runs/_prozess.log
 runs/*-demo/

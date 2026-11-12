@@ -10,12 +10,12 @@ import json
 import os
 import re
 import shutil
-import stat
 import subprocess
 import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -24,9 +24,6 @@ from graph import KNOTEN
 
 ROOT = Path(__file__).resolve().parent.parent
 RUNS = ROOT / "runs"
-WORK = ROOT / "arbeitsbereich"
-TARGET = WORK / "projekt"
-GIT = ["git", "-c", "user.name=Agentenlauf", "-c", "user.email=agent@localhost"]
 
 SPRACHE = {".py": "python", ".html": "html", ".js": "javascript", ".css": "css"}
 
@@ -44,14 +41,6 @@ def load_env():
 
 def load_cfg():
     return json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
-
-
-def git(*args, cwd=TARGET, check=True):
-    r = subprocess.run(GIT + list(args), cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    if check and r.returncode != 0:
-        detail = (r.stderr or "").strip() or (r.stdout or "").strip() or "git command failed"
-        raise RuntimeError(f"git {' '.join(args)}: {detail}")
-    return r
 
 
 def codebloecke(text):
@@ -75,7 +64,7 @@ class Lauf:
     def __init__(self, lauf_id):
         self.id = lauf_id
         self.dir = RUNS / lauf_id
-        self.wt = WORK / "worktrees" / lauf_id
+        self.projekt = self.dir / "ergebnis"   # der eine Projektordner des Laufs, alle Agenten arbeiten hier
         self.lock = threading.Lock()
         self.zaehler = 0
 
@@ -114,7 +103,7 @@ class Lauf:
 
     # --- Kontext ------------------------------------------------------
     def kontext(self, knoten, runde, suche):
-        """Löst die Kontext-Liste aus graph.py auf: erst runs/<lauf>/, dann die Worktrees in `suche`."""
+        """Löst die Kontext-Liste aus graph.py auf: erst runs/<lauf>/, dann die Ordner in `suche`."""
         out = []
         for eintrag in KNOTEN[knoten].get("kontext", []):
             optional = eintrag.endswith("?")
@@ -159,6 +148,9 @@ class Lauf:
         try:
             if agents.ist_claude(cfg, anbieter):
                 text, rec["kosten_usd"] = agents.claude_call(cfg, anbieter, nachricht, out, cwd or self.dir, werkzeuge)
+            elif werkzeuge is True:
+                text = agents.agent_call(cfg, anbieter, nachricht, out, cwd or self.dir,
+                                         melde=lambda t: self.harness(knoten, t, warnung=True))
             else:
                 def wechsel(von, nach, grund):
                     self.harness(knoten, f"Anbieter gewechselt: {von} → {nach} ({grund.strip()[:120]})", warnung=True)
@@ -211,35 +203,28 @@ class Lauf:
                     self.harness(knoten, f"Syntaxprüfung {name}: Fehler in Zeile {e.lineno}: {e.msg}", befehl="ast.parse", warnung=True)
         return probleme
 
-    def commit(self, knoten, pfad, msg):
-        git("add", "-A", cwd=pfad)
-        if git("status", "--porcelain", cwd=pfad).stdout.strip():
-            git("commit", "-m", msg, cwd=pfad)
-            self.harness(knoten, f"Commit „{msg}“", befehl=f'git commit -m "{msg}"')
-
 
 # ---------------------------------------------------------------- Bausteine
 
-def init_target():
-    TARGET.mkdir(parents=True, exist_ok=True)
-    if not (TARGET / ".git").exists():
-        git("init", "-b", "main")
-        (TARGET / "README.md").write_text("# Sudoku\n", encoding="utf-8")
-        (TARGET / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
-        git("add", "-A")
-        git("commit", "-m", "Start")
-
-
-def basis():
-    """Der leere Anfangsstand (Commit „Start“). Jeder Lauf baut das ganze Projekt neu und beginnt deshalb hier,
-    nicht beim zuletzt freigegebenen main. Sonst lägen alte Dateien im Worktree und brächten Tests und Merges durcheinander."""
-    return git("rev-list", "--max-parents=0", "main").stdout.split()[0]
-
-
-def worktree(lauf, name):
-    pfad = lauf.wt / name
-    git("worktree", "add", str(pfad), "-b", f"agent/{lauf.id}/{name}", basis())
-    return pfad
+@contextmanager
+def nur(lauf, knoten, ordner, erlaubt):
+    """Harness-Regel für Agenten mit Werkzeugen: Sie dürfen im Projektordner nur die Dateien in `erlaubt` ändern.
+    Alles andere stellt die Harness danach wieder her, neu angelegte Dateien entfernt sie."""
+    vorher = {f.name: f.read_bytes() for f in ordner.iterdir() if f.is_file()}
+    try:
+        yield
+    finally:
+        shutil.rmtree(ordner / "__pycache__", ignore_errors=True)
+        for name, inhalt in vorher.items():
+            f = ordner / name
+            if name not in erlaubt and (not f.is_file() or f.read_bytes() != inhalt):
+                was = "geändert: zurückgesetzt" if f.is_file() else "gelöscht: wiederhergestellt"
+                f.write_bytes(inhalt)
+                lauf.harness(knoten, f"{name} wurde {was}", befehl=f"Datei {name} wiederherstellen", warnung=True)
+        for f in ordner.iterdir():
+            if f.is_file() and f.name not in vorher and f.name not in erlaubt:
+                f.unlink()
+                lauf.harness(knoten, f"{f.name} neu angelegt: entfernt, erlaubt sind nur {', '.join(sorted(erlaubt))}", warnung=True)
 
 
 def bisherige_designs(runs=RUNS, anzahl=8):
@@ -267,7 +252,7 @@ def prueft_oberflaeche(code):
 
 
 def codeknoten(lauf, cfg, knoten, pfad, runde=1, suche=(), pflicht=None):
-    """Ein Modell-Aufruf, dessen Codeblöcke in einen Worktree geschrieben und committet werden.
+    """Ein Modell-Aufruf, dessen Codeblöcke die Harness in den Projektordner schreibt.
     Ist die Antwort unbrauchbar, fragt die Harness genau einmal mit dem Fehler als Hinweis nach."""
     dateien = KNOTEN[knoten]["ausgabe"]
     text, aid = lauf.frage(cfg, knoten, runde, suche)
@@ -284,41 +269,32 @@ def codeknoten(lauf, cfg, knoten, pfad, runde=1, suche=(), pflicht=None):
         missing = [p for p in probleme if p.startswith("Kein Codeblock")]
         if missing:
             raise RuntimeError(f"{knoten}: {missing[0]}")
-    lauf.commit(knoten, pfad, f"{KNOTEN[knoten]['titel']}, Runde {runde}")
     lauf.event(knoten, "ok", "Dateien übernommen", aufruf=aid)
 
 
-def korrektur(lauf, cfg, engine, integ, runde):
-    """Korrektur-Agent: arbeitet im Engine-Worktree und führt die Tests selbst aus.
-    Die Testdatei ist nur eine Kopie und verschwindet danach wieder, Änderungen daran wirken also nicht."""
-    kopie = engine / "test_spiel.py"
-    shutil.copy(integ / "test_spiel.py", kopie)
-    lauf.harness("korrektur", "test_spiel.py als Kopie in den Worktree gelegt")
-    try:
-        text, aid = lauf.frage(cfg, "korrektur", runde, suche=[engine], cwd=engine)
-    finally:
-        kopie.unlink(missing_ok=True)
-        shutil.rmtree(engine / "__pycache__", ignore_errors=True)
-    if not agents.ist_claude(cfg, cfg["rollen"]["korrektur"]):
-        lauf.uebernimm("korrektur", text, engine, ["engine.py"], ["engine.py"])  # ohne Werkzeuge: Code steckt in der Antwort
-    lauf.commit("korrektur", engine, f"Korrektur, Runde {runde}")
+def korrektur(lauf, cfg, ordner, runde):
+    """Korrektur-Agent: arbeitet im Projektordner und führt die Tests selbst aus.
+    Ändern darf er nur engine.py. Fasst er die Tests oder die Oberfläche an, setzt die Harness das zurück."""
+    lauf.harness("korrektur", "Darf nur engine.py ändern, alles andere wird danach zurückgesetzt")
+    with nur(lauf, "korrektur", ordner, {"engine.py"}):
+        text, aid = lauf.frage(cfg, "korrektur", runde, suche=[ordner], cwd=ordner)
     lauf.event("korrektur", "ok", "engine.py korrigiert", aufruf=aid)
 
 
-def gate(lauf, integ, runde, zeitlimit):
-    """Test-Gate: kein Modell. Branches zusammenführen und python test_spiel.py ausführen."""
+def gate(lauf, ordner, runde, zeitlimit):
+    """Test-Gate: kein Modell. Prüft, ob alle Dateien da sind, und führt python test_spiel.py aus."""
     lauf.event("gate", "run", f"Test-Gate, Runde {runde}", runde=runde)
-    git("reset", "--hard", basis(), cwd=integ)
-    for n in ("engine", "ui", "tests"):
-        r = git("merge", "--no-ff", "-m", f"Merge {n}", f"agent/{lauf.id}/{n}", cwd=integ, check=False)
-        if r.returncode != 0:
-            raise RuntimeError(f"Merge-Konflikt bei {n}: {r.stdout[:300]}")
-        lauf.harness("gate", f"Branch {n} zusammengeführt", befehl=f"git merge --no-ff agent/{lauf.id}/{n}")
+    dateien = [f for n in ("engine", "ui", "tests") for f in KNOTEN[n]["ausgabe"]]
+    fehlen = [f for f in dateien if not (ordner / f).is_file()]
+    if "test_spiel.py" in fehlen or "engine.py" in fehlen:
+        raise RuntimeError(f"Im Projektordner fehlt {', '.join(fehlen)}")
+    lauf.harness("gate", f"Projektordner vollständig: {', '.join(f for f in dateien if f not in fehlen)}",
+                 befehl=f"ls runs/{lauf.id}/ergebnis")
     lauf.harness("gate", f"Tests starten, Zeitlimit {zeitlimit} s", befehl="python -u test_spiel.py")
     start = time.time()
     try:
         # -u: ungepuffert, damit bei Zeitüberschreitung die Ausgabe bis dahin erhalten bleibt
-        r = subprocess.run([sys.executable, "-u", "test_spiel.py"], cwd=integ, capture_output=True, text=True,
+        r = subprocess.run([sys.executable, "-u", "test_spiel.py"], cwd=ordner, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=zeitlimit)
         code, out = r.returncode, ((r.stdout or "") + (r.stderr or "")).strip()
     except subprocess.TimeoutExpired as e:
@@ -328,6 +304,7 @@ def gate(lauf, integ, runde, zeitlimit):
                "Die Spezifikation verlangt ein Rätsel in unter 5 Sekunden. Häufigste Ursache: generate() oder "
                "solutions() sind zu langsam.").strip()
         lauf.harness("gate", f"Zeitlimit von {zeitlimit} s überschritten, Tests abgebrochen", warnung=True)
+    shutil.rmtree(ordner / "__pycache__", ignore_errors=True)
     lauf.harness("gate", f"Laufzeit {time.time() - start:.1f} s")
     ok = code == 0
     lauf.harness("gate", f"Exit-Code {code}: {'bestanden' if ok else 'nicht bestanden'}", befehl="python test_spiel.py")
@@ -348,14 +325,15 @@ def ausfuehren(befehl, cwd, zeitlimit):
         return "Zeitlimit", f"{teil.strip()}\n\nABGEBROCHEN nach {zeitlimit} Sekunden.".strip()
 
 
-def abnahme(lauf, integ, runde, zeitlimit):
+def abnahme(lauf, ordner, runde, zeitlimit):
     """Abnahmetest: kein Modell. Engine-Tests noch einmal, dann die Oberfläche im Headless-Browser bedienen."""
     lauf.event("abnahme", "run", f"Abnahmetest, Runde {runde}", runde=runde)
     lauf.harness("abnahme", "Engine-Tests", befehl="python -u test_spiel.py")
-    code_t, out_t = ausfuehren([sys.executable, "-u", "test_spiel.py"], integ, zeitlimit)
+    code_t, out_t = ausfuehren([sys.executable, "-u", "test_spiel.py"], ordner, zeitlimit)
     lauf.harness("abnahme", f"Engine-Tests: Exit-Code {code_t}", warnung=True if code_t != 0 else None)
     lauf.harness("abnahme", "Oberfläche im Headless-Browser bedienen", befehl="python orchestrator/ui_check.py")
-    code_u, out_u = ausfuehren([sys.executable, str(Path(__file__).with_name("ui_check.py")), str(integ)], integ, 120)
+    code_u, out_u = ausfuehren([sys.executable, str(Path(__file__).with_name("ui_check.py")), str(ordner)], ordner, 120)
+    shutil.rmtree(ordner / "__pycache__", ignore_errors=True)
     if code_u == 3:
         lauf.harness("abnahme", "Kein Browser gefunden: Oberfläche ungeprüft", warnung=True)
     else:
@@ -375,11 +353,8 @@ def abnahme(lauf, integ, runde, zeitlimit):
 def start():
     load_env()
     cfg = load_cfg()
-    if not shutil.which("git"):
-        sys.exit("git wurde nicht gefunden. Bitte installieren.")
     lauf = Lauf(datetime.now().strftime("%Y-%m-%d-%H%M%S"))
-    lauf.dir.mkdir(parents=True)
-    lauf.wt.mkdir(parents=True)
+    lauf.projekt.mkdir(parents=True)
     befehl = "python orchestrator/run.py"
     (lauf.dir / "start.json").write_text(json.dumps({
         "befehl": befehl, "modus": "live", "zeit": datetime.now().isoformat(timespec="seconds"),
@@ -396,7 +371,7 @@ def start():
 
 def ablauf(lauf, cfg):
     max_runden = cfg["max_runden"]
-    init_target()
+    ordner = lauf.projekt
 
     # Auftrag
     lauf.schreibe("00-auftrag.md", (ROOT / "auftrag.md").read_text(encoding="utf-8"))
@@ -425,32 +400,35 @@ def ablauf(lauf, cfg):
     bisher = bisherige_designs()
     if bisher:
         lauf.harness("design", f"{len(bisher)} bisherige Designs als Hinweis mitgegeben")
-    textknoten(lauf, cfg, "design", nachtrag="Bisherige Designs: " + ", ".join(bisher) if bisher else None)
+    hinweise = ["Bisherige Designs: " + ", ".join(bisher)] if bisher else []
+    if not agents.ist_claude(cfg, cfg["rollen"]["design"]):
+        # Über die API gibt es keine Websuche. Ohne diesen Hinweis erfindet das Modell gern Quellen.
+        hinweise.append("Du hast in diesem Aufruf keine Websuche. Wähle aus deinem Wissen. Schreibe unter Quellen nur "
+                        "Adressen, die du sicher kennst, sonst „keine Websuche in diesem Lauf“.")
+        lauf.harness("design", "Keine Websuche über die API: Hinweis gegen erfundene Quellen mitgegeben")
+    textknoten(lauf, cfg, "design", nachtrag="\n\n".join(hinweise) or None)
 
-    # Umsetzung: drei Agenten parallel, jeder in seinem eigenen Git-Worktree
-    paths = {}
-    for n in ("engine", "ui", "tests", "integration"):
-        paths[n] = worktree(lauf, n)
-        lauf.harness(n if n != "integration" else "gate", f"Worktree {n} angelegt",
-                     befehl=f"git worktree add {paths[n].relative_to(ROOT).as_posix()} -b agent/{lauf.id}/{n}")
-    integ = paths["integration"]
+    # Umsetzung: drei Modelle parallel. Alle schreiben in denselben Projektordner, aber jedes nur seine eigenen Dateien.
+    # Die Dateien schreibt die Harness aus den Codeblöcken, deshalb kommen sie sich nie in die Quere.
+    for n in ("engine", "ui", "tests"):
+        lauf.harness(n, f"Schreibt nur {', '.join(KNOTEN[n]['ausgabe'])} in runs/{lauf.id}/ergebnis")
     with ThreadPoolExecutor(3) as ex:
-        jobs = [ex.submit(codeknoten, lauf, cfg, "engine", paths["engine"]),
-                ex.submit(codeknoten, lauf, cfg, "ui", paths["ui"], pflicht=["index.html", "board.js"]),
-                ex.submit(codeknoten, lauf, cfg, "tests", paths["tests"])]
+        jobs = [ex.submit(codeknoten, lauf, cfg, "engine", ordner),
+                ex.submit(codeknoten, lauf, cfg, "ui", ordner, pflicht=["index.html", "board.js"]),
+                ex.submit(codeknoten, lauf, cfg, "tests", ordner)]
         [j.result() for j in jobs]
 
     # Schleife 2: Test-Gate → Testcheck → Korrektur, bis die Tests bestehen
     test_korrigiert = False
     for runde in range(1, max_runden + 1):
-        if gate(lauf, integ, runde, cfg.get("test_zeitlimit", 90)):
+        if gate(lauf, ordner, runde, cfg.get("test_zeitlimit", 90)):
             lauf.kante("gate", "integration", "bestanden")
             break
         if runde == max_runden:
             raise RuntimeError(f"Tests nach {max_runden} Runden nicht bestanden")
         lauf.kante("gate", "testcheck", "nicht bestanden")
 
-        text, aid = lauf.frage(cfg, "testcheck", runde, suche=[integ], cwd=integ)
+        text, aid = lauf.frage(cfg, "testcheck", runde, suche=[ordner], cwd=ordner)
         datei = KNOTEN["testcheck"]["ausgabe"][0].format(runde=runde)
         lauf.schreibe(datei, text)
         u = urteil(text, ["engine", "test"]) or "engine"
@@ -461,7 +439,7 @@ def ablauf(lauf, cfg):
         # und der Test darf höchstens einmal pro Lauf umgeschrieben werden.
         if u == "test":
             neu = next((c for lang, c in codebloecke(text) if lang in ("python", "py", "")), None)
-            alt = (paths["tests"] / "test_spiel.py").read_text(encoding="utf-8").strip()
+            alt = (ordner / "test_spiel.py").read_text(encoding="utf-8").strip()
             if test_korrigiert:
                 lauf.harness("testcheck", "Urteil „test“ verworfen: Der Test wurde in diesem Lauf schon einmal geändert", warnung=True)
                 u = "engine"
@@ -475,29 +453,25 @@ def ablauf(lauf, cfg):
                     lauf.harness("testcheck", f"Urteil „test“ verworfen: neuer Test hat Syntaxfehler in Zeile {e.lineno}", warnung=True)
                     u = "engine"
         if u == "test":
-            lauf.uebernimm("testcheck", text, paths["tests"], ["test_spiel.py"], ["test_spiel.py"])
-            lauf.commit("testcheck", paths["tests"], f"Test korrigiert, Runde {runde + 1}")
+            lauf.uebernimm("testcheck", text, ordner, ["test_spiel.py"], ["test_spiel.py"])
             lauf.kante("testcheck", "tests", f"Test korrigiert, Runde {runde + 1}")
             test_korrigiert = True
         else:
             lauf.kante("testcheck", "korrektur", "URTEIL: engine")
-            korrektur(lauf, cfg, paths["engine"], integ, runde)
+            korrektur(lauf, cfg, ordner, runde)
             lauf.kante("korrektur", "gate", f"neue engine.py, Runde {runde + 1}")
 
     # Schleife 3: Integrations-Agent → Abnahmetest, bis Engine und Oberfläche zusammen funktionieren
+    # Harness-Regel: Der Integrations-Agent darf Engine und Oberfläche reparieren, die Tests aber nicht anfassen
+    erlaubt = {*KNOTEN["engine"]["ausgabe"], *KNOTEN["ui"]["ausgabe"]}
     bericht = None
     for runde in range(1, max_runden + 1):
-        text, aid = lauf.frage(cfg, "integration", runde, nachtrag=bericht, cwd=integ)
-        # Harness-Regel: Der Integrations-Agent darf die Tests nicht anfassen
-        if git("diff", "--quiet", "HEAD", "--", "test_spiel.py", cwd=integ, check=False).returncode:
-            git("checkout", "HEAD", "--", "test_spiel.py", cwd=integ)
-            lauf.harness("integration", "test_spiel.py wurde geändert: zurückgesetzt", befehl="git checkout HEAD -- test_spiel.py", warnung=True)
-        shutil.rmtree(integ / "__pycache__", ignore_errors=True)
-        lauf.commit("integration", integ, f"Integration, Runde {runde}")
+        with nur(lauf, "integration", ordner, erlaubt):
+            text, aid = lauf.frage(cfg, "integration", runde, nachtrag=bericht, cwd=ordner)
         datei = KNOTEN["integration"]["ausgabe"][0].format(runde=runde)
         lauf.schreibe(datei, text)
         lauf.event("integration", "ok", f"{datei} geschrieben", datei=datei, aufruf=aid)
-        ok, bericht = abnahme(lauf, integ, runde, cfg.get("test_zeitlimit", 90))
+        ok, bericht = abnahme(lauf, ordner, runde, cfg.get("test_zeitlimit", 90))
         if ok:
             lauf.kante("abnahme", "freigabe", "bestanden")
             break
@@ -505,12 +479,6 @@ def ablauf(lauf, cfg):
             raise RuntimeError(f"Abnahmetest nach {max_runden} Runden nicht bestanden")
         lauf.kante("abnahme", "integration", f"nicht bestanden, Runde {runde + 1}")
 
-    ergebnis = lauf.dir / "ergebnis"
-    ergebnis.mkdir()
-    for f in integ.iterdir():
-        if f.is_file() and f.name != ".git":
-            shutil.copy(f, ergebnis / f.name)
-    lauf.harness("abnahme", "Dateien nach runs/<lauf>/ergebnis kopiert")
     lauf.event("freigabe", "run", "Wartet auf deine Freigabe")
 
 
@@ -540,7 +508,7 @@ def letztes_event(d):
 
 
 def ist_wiedergabe(d):
-    """Läufe aus orchestrator/wiedergabe.py: keine Worktrees, keine Branches, nichts zu entscheiden."""
+    """Läufe aus orchestrator/wiedergabe.py: nichts zu entscheiden."""
     try:
         return bool(json.loads((d / "start.json").read_text(encoding="utf-8")).get("quelle"))
     except (OSError, json.JSONDecodeError):
@@ -553,133 +521,40 @@ def wartend():
             if not ist_wiedergabe(d) and letztes_event(d).get("knoten") == "freigabe" and letztes_event(d).get("status") == "run"]
 
 
-def ohne_entscheidung():
-    """Wartende und abgebrochene echte Läufe: Deren Entwurf darf verworfen werden."""
-    return [d.name for d in sorted(p for p in RUNS.iterdir() if p.is_dir())
-            if d.name in wartend() or (not ist_wiedergabe(d) and letztes_event(d).get("knoten") == "orchestrator")]
-
-
-def keine_demo(lauf_id):
+def entscheide(lauf_id, freigeben):
+    """Der Mensch am Ende: hält fest, ob er das Ergebnis abnimmt. Dateien werden dabei nicht verschoben oder gelöscht,
+    der ganze Lauf bleibt in runs/ als Beispiel. Ins Repo kommt er mit deinem nächsten Commit."""
     if lauf_id and ist_wiedergabe(RUNS / lauf_id):
-        sys.exit(f"Lauf {lauf_id} ist eine Demo (Aufzeichnung). Da gibt es nichts freizugeben oder zu verwerfen.")
-
-
-def approve(lauf_id):
-    keine_demo(lauf_id)
+        sys.exit(f"Lauf {lauf_id} ist eine Demo (Aufzeichnung). Da gibt es nichts zu entscheiden.")
     offen = wartend()
     if not offen:
-        sys.exit("Es wartet kein Lauf auf eine Freigabe.")
+        sys.exit("Es wartet kein Lauf auf eine Entscheidung.")
     lauf_id = lauf_id or offen[-1]
     if lauf_id not in offen:
-        sys.exit(f"Lauf {lauf_id} wartet nicht auf Freigabe. Wartend: {', '.join(offen)}")
+        sys.exit(f"Lauf {lauf_id} wartet nicht auf eine Entscheidung. Wartend: {', '.join(offen)}")
     lauf = Lauf(lauf_id)
-    zweig = f"agent/{lauf.id}/integration"
-    if git("rev-parse", "--verify", "--quiet", zweig, check=False).returncode != 0:
-        sys.exit(f"Branch {zweig} fehlt, der Entwurf wurde wohl schon gelöscht.")
-    # Eigene Änderungen im Zielprojekt nie überschreiben
-    offen_geaendert = git("status", "--porcelain", check=False).stdout.strip()
-    if offen_geaendert:
-        sys.exit(f"In {TARGET} gibt es Änderungen, die nicht committet sind. Erst committen oder zurücksetzen:\n{offen_geaendert[:600]}")
-    # Jeder Lauf baut das ganze Projekt neu. Ein normaler Merge kollidiert deshalb mit jeder früheren Freigabe.
-    # Die Freigabe übernimmt den Stand des Laufs als neuen main, als Merge-Commit, damit die Historie beider Seiten bleibt.
-    try:
-        git("merge", "--no-ff", "--no-commit", "-s", "ours", zweig)
-        git("read-tree", "--reset", "-u", zweig)
-        git("commit", "--no-verify", "-m", f"Lauf {lauf.id} freigegeben")
-    except RuntimeError as e:
-        git("merge", "--abort", check=False)
-        git("reset", "--hard", "HEAD", check=False)
-        sys.exit(f"Übernahme nach main nicht möglich, nichts geändert:\n{e}")
-    lauf.harness("freigabe", "Stand des Laufs als neuer main übernommen",
-                 befehl=f"git merge -s ours --no-commit {zweig} && git read-tree --reset -u {zweig} && git commit")
-    # Aufräumen: Die Commits stecken jetzt in der Historie von main, Worktrees und Branches braucht niemand mehr
-    zweige = entwurf_loeschen(lauf)
-    lauf.harness("freigabe", f"Aufgeräumt: {len(zweige)} Branches und Worktrees, die Commits bleiben über main erhalten",
-                 befehl=f"git worktree remove --force … && git branch -D agent/{lauf.id}/*")
-    lauf.schreibe("09-freigabe.md", "# Freigabe\n\nDer Merge in `main` ist erfolgt.\n")
-    lauf.event("freigabe", "ok", "Merge in main freigegeben", datei="09-freigabe.md")
-    print(f"Fertig. Das Ergebnis liegt in {TARGET}")
-    rest = [o for o in offen if o != lauf_id]
-    if rest:
-        print(f"Weitere wartende Läufe: {', '.join(rest)}")
-
-
-def schreibbar(fn, pfad, _):
-    """Git legt schreibgeschützte Dateien an, die Windows sonst nicht löscht."""
-    os.chmod(pfad, stat.S_IWRITE)
-    fn(pfad)
-
-
-def entwurf_loeschen(lauf):
-    """Entfernt Worktrees, Worktree-Ordner und Branches eines Laufs. Gibt die gelöschten Branches zurück."""
-    if lauf.wt.exists():
-        for wt in sorted(p for p in lauf.wt.iterdir() if p.is_dir()):
-            git("worktree", "remove", "--force", str(wt), check=False)
-        shutil.rmtree(lauf.wt, onerror=schreibbar)
-    git("worktree", "prune", check=False)
-    zweige = git("branch", "--list", f"agent/{lauf.id}/*", "--format=%(refname:short)", check=False).stdout.split()
-    if zweige:
-        git("branch", "-D", *zweige)
-    return zweige
-
-
-def verwerfen(lauf_id):
-    """Gegenstück zur Freigabe: löscht den Entwurf im Arbeitsbereich (Worktrees, Branches).
-    runs/<lauf> bleibt vollständig, samt Ergebnis: Es ist ein Beispiel und als Demo abspielbar.
-    Geht für wartende und für abgebrochene Läufe."""
-    keine_demo(lauf_id)
-    offen = ohne_entscheidung()
-    if not offen:
-        sys.exit("Kein Lauf wartet auf eine Entscheidung.")
-    lauf_id = lauf_id or offen[-1]
-    if lauf_id not in offen:
-        sys.exit(f"Lauf {lauf_id} wartet nicht auf eine Entscheidung. Offen: {', '.join(offen)}")
-    lauf = Lauf(lauf_id)
-    zweige = entwurf_loeschen(lauf)
-    lauf.harness("freigabe", f"Entwurf gelöscht: {len(zweige)} Branches und Worktrees",
-                 befehl=f"git worktree remove --force … && git branch -D agent/{lauf.id}/*")
-    lauf.schreibe("09-freigabe.md", "# Verworfen\n\nDer Entwurf wurde gelöscht. Nichts wurde nach `main` übernommen.\n")
-    lauf.event("freigabe", "fail", "Verworfen, nichts nach main übernommen", datei="09-freigabe.md")
-    print(f"Lauf {lauf.id} verworfen.")
-
-
-def zuruecksetzen():
-    """Räumt den Arbeitsbereich (Zielprojekt, Worktrees, Branches) und die Demo-Wiedergaben ab.
-    Die Läufe in runs/ sind die Beispiele des Projekts, liegen im Repo und bleiben."""
-    demos = [p for p in RUNS.iterdir() if p.is_dir() and ist_wiedergabe(p)]
-    offen = ohne_entscheidung()
-    print(f"Löscht den Arbeitsbereich {WORK} (Zielprojekt mit allen Freigaben, Worktrees, Branches)"
-          f" und {len(demos)} Demo-Wiedergaben. Die Läufe in runs/ bleiben.")
-    if offen:
-        print(f"{len(offen)} offene Läufe verlieren ihren Entwurf und werden als verworfen markiert: {', '.join(offen)}")
-    if input("Wirklich? Tippe ja: ").strip().lower() != "ja":
-        sys.exit("Abgebrochen.")
-    for lauf_id in offen:
-        lauf = Lauf(lauf_id)
-        lauf.schreibe("09-freigabe.md", "# Verworfen\n\nDer Arbeitsbereich wurde zurückgesetzt. Nichts wurde nach `main` übernommen.\n")
-        lauf.event("freigabe", "fail", "Beim Zurücksetzen verworfen", datei="09-freigabe.md")
-    for d in [*demos, WORK]:
-        if d.exists():
-            shutil.rmtree(d, onerror=schreibbar)
-    print("Zurückgesetzt.")
+    if freigeben:
+        lauf.schreibe("09-freigabe.md", f"# Freigegeben\n\nDas Ergebnis in `runs/{lauf.id}/ergebnis/` ist abgenommen.\n")
+        lauf.event("freigabe", "ok", "Freigegeben", datei="09-freigabe.md")
+    else:
+        lauf.schreibe("09-freigabe.md", f"# Verworfen\n\nDas Ergebnis wurde nicht abgenommen. Der Lauf bleibt als Beispiel erhalten.\n")
+        lauf.event("freigabe", "fail", "Verworfen", datei="09-freigabe.md")
+    print(f"Lauf {lauf.id} {'freigegeben' if freigeben else 'verworfen'}. Er liegt in runs/{lauf.id}/.")
 
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser()
     p.add_argument("--check", action="store_true", help="Keys und Modelle mit einer kurzen Anfrage testen")
-    p.add_argument("--freigabe", nargs="?", const="", metavar="LAUF", help="wartenden Lauf nach main übernehmen")
-    p.add_argument("--verwerfen", nargs="?", const="", metavar="LAUF", help="wartenden Lauf verwerfen, Entwurf löschen")
-    p.add_argument("--zuruecksetzen", action="store_true", help="Arbeitsbereich und Demo-Wiedergaben löschen, runs/ bleibt")
+    p.add_argument("--freigabe", nargs="?", const="", metavar="LAUF", help="wartenden Lauf abnehmen")
+    p.add_argument("--verwerfen", nargs="?", const="", metavar="LAUF", help="wartenden Lauf nicht abnehmen")
     a = p.parse_args()
     RUNS.mkdir(exist_ok=True)
     if a.check:
         check()
     elif a.freigabe is not None:
-        approve(a.freigabe)
+        entscheide(a.freigabe, True)
     elif a.verwerfen is not None:
-        verwerfen(a.verwerfen)
-    elif a.zuruecksetzen:
-        zuruecksetzen()
+        entscheide(a.verwerfen, False)
     else:
         start()

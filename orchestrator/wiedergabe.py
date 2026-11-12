@@ -7,6 +7,7 @@ schreibt das alles im Originaltempo (oder schneller) in einen neuen Lauf. Das Da
 Aufruf: python orchestrator/wiedergabe.py [LAUF] [--tempo 2]
 Quelle: runs/<LAUF>, ohne LAUF der neueste abspielbare Lauf. Die Wiedergabe landet in runs/<zeit>-demo
 und ist in .gitignore ausgeschlossen, damit nicht jede abgespielte Demo als Kopie ins Repo kommt.
+Es bleibt immer nur die neueste Wiedergabe liegen, ältere löscht dieses Skript beim Start.
 """
 import argparse
 import json
@@ -114,6 +115,10 @@ def plan(quelle):
 def abspielen(quelle, tempo):
     ev, aktionen = plan(quelle)
     start_q = lies_json(quelle / "start.json", {})
+    # Ältere Wiedergaben sind nur Kopien von Läufen, die ohnehin in runs/ liegen
+    for alt in RUNS.glob("*-demo"):
+        if alt.is_dir() and alt.parent == RUNS and lies_json(alt / "start.json", {}).get("quelle"):
+            shutil.rmtree(alt)
     lauf_id = datetime.now().strftime("%Y-%m-%d-%H%M%S") + "-demo"
     ziel = RUNS / lauf_id
     (ziel / "aufrufe").mkdir(parents=True)

@@ -2,19 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "0 Arbeitsbereich zurücksetzen",
-      "type": "shell",
-      "command": "python3 orchestrator/run.py --zuruecksetzen",
-      "windows": {
-        "command": "python orchestrator/run.py --zuruecksetzen"
-      },
-      "presentation": {
-        "panel": "dedicated",
-        "focus": true
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "1 Dashboard starten",
       "type": "shell",
       "command": "python3 orchestrator/dashboard.py",

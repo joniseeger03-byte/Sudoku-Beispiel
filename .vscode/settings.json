@@ -1,8 +1,3 @@
 {
-    "python.terminal.useEnvFile": true,
-    // Zeigt das Zielprojekt arbeitsbereich/projekt (eigenes Git-Repo) in der Quellcodeverwaltung an
-    "git.repositoryScanMaxDepth": 2,
-    "git.scanRepositories": ["arbeitsbereich/projekt"],
-    // Die vielen Agenten-Worktrees dort nicht einzeln einblenden
-    "git.detectWorktrees": false
+    "python.terminal.useEnvFile": true
 }

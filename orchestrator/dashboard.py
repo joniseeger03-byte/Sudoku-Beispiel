@@ -62,7 +62,7 @@ class Prozess:
         with self.lock:
             if not self.laeuft():
                 return False
-            # Ganzen Prozessbaum beenden: run.py startet selbst Claude Code, git und Tests.
+            # Ganzen Prozessbaum beenden: run.py startet selbst Claude Code und Tests.
             if os.name == "nt":
                 subprocess.run(["taskkill", "/T", "/F", "/PID", str(self.p.pid)], capture_output=True)
             else:
@@ -124,8 +124,10 @@ def lauf(d):
     live = {p.stem: lies(p)[-30000:] for p in sorted((d / "live").glob("*.txt"))}
     start = json.loads(lies(d / "start.json", "{}"))
     dateien = {p.name: lies(p) for p in sorted(d.glob("*.md"))}
+    # Der Projektordner füllt sich schon während des Laufs. Spielbar ist er erst, wenn der Abnahmetest bestanden ist.
+    fertig = any(e.get("knoten") == "freigabe" for e in events)
     return {"start": start, "events": events, "aufrufe": aufrufe, "live": live, "dateien": dateien,
-            "ergebnis": (d / "ergebnis" / "index.html").exists()}
+            "ergebnis": fertig and (d / "ergebnis" / "index.html").exists()}
 
 
 class Handler(BaseHTTPRequestHandler):

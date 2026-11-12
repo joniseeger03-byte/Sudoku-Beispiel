@@ -1,0 +1,142 @@
+"""engine.py - Sudoku-Engine: Generator, Solver, Konflikterkennung, CLI.
+
+Nutzt ausschliesslich die Python-Standardbibliothek.
+"""
+import json
+import random
+import sys
+
+CLUES = {"leicht": 38, "mittel": 32, "schwer": 26}
+
+_ROW = [i // 9 for i in range(81)]
+_COL = [i % 9 for i in range(81)]
+_BOX = [(i // 27) * 3 + (i % 9) // 3 for i in range(81)]
+
+_UNITS = (
+    [[r * 9 + c for c in range(9)] for r in range(9)]
+    + [[r * 9 + c for r in range(9)] for c in range(9)]
+    + [[(br * 3 + r) * 9 + bc * 3 + c for r in range(3) for c in range(3)]
+       for br in range(3) for bc in range(3)]
+)
+
+
+def conflicts(grid):
+    """Menge der Indizes, die in Zeile, Spalte oder Block mit einem anderen Feld kollidieren."""
+    result = set()
+    for unit in _UNITS:
+        seen = {}
+        for i in unit:
+            v = grid[i]
+            if v:
+                seen.setdefault(v, []).append(i)
+        for idxs in seen.values():
+            if len(idxs) > 1:
+                result.update(idxs)
+    return result
+
+
+def _search(g, rows, cols, boxes, out, limit, rnd):
+    if len(out) >= limit:
+        return
+    best = -1
+    best_mask = 0
+    best_n = 10
+    for i in range(81):
+        if g[i] == 0:
+            m = ~(rows[_ROW[i]] | cols[_COL[i]] | boxes[_BOX[i]]) & 511
+            n = bin(m).count("1")
+            if n < best_n:
+                best, best_mask, best_n = i, m, n
+                if n == 0:
+                    return
+                if n == 1:
+                    break
+    if best < 0:
+        out.append(g[:])
+        return
+    digits = [d for d in range(9) if (best_mask >> d) & 1]
+    if rnd is not None:
+        rnd.shuffle(digits)
+    r, c, b = _ROW[best], _COL[best], _BOX[best]
+    for d in digits:
+        bit = 1 << d
+        g[best] = d + 1
+        rows[r] |= bit
+        cols[c] |= bit
+        boxes[b] |= bit
+        _search(g, rows, cols, boxes, out, limit, rnd)
+        rows[r] &= ~bit
+        cols[c] &= ~bit
+        boxes[b] &= ~bit
+        g[best] = 0
+        if len(out) >= limit:
+            return
+
+
+def _solve(puzzle, limit, rnd=None):
+    g = [int(v) for v in puzzle]
+    if len(g) != 81 or limit <= 0:
+        return []
+    if any(v < 0 or v > 9 for v in g):
+        return []
+    if conflicts(g):
+        return []
+    rows = [0] * 9
+    cols = [0] * 9
+    boxes = [0] * 9
+    for i, v in enumerate(g):
+        if v:
+            bit = 1 << (v - 1)
+            rows[_ROW[i]] |= bit
+            cols[_COL[i]] |= bit
+            boxes[_BOX[i]] |= bit
+    out = []
+    _search(g, rows, cols, boxes, out, limit, rnd)
+    return out
+
+
+def solutions(puzzle, limit):
+    """Liste mit hoechstens `limit` vollstaendigen Loesungen (Listen mit 81 Zahlen)."""
+    return _solve(puzzle, limit)
+
+
+def generate(level):
+    """Erzeugt ein Raetsel mit eindeutiger Loesung und genau CLUES[level] Hinweisen."""
+    if level not in CLUES:
+        raise ValueError("Unbekannte Stufe: %r" % (level,))
+    target = CLUES[level]
+    rnd = random.Random()
+    while True:
+        solution = _solve([0] * 81, 1, rnd)[0]
+        puzzle = solution[:]
+        order = list(range(81))
+        rnd.shuffle(order)
+        count = 81
+        for i in order:
+            if count <= target:
+                break
+            saved = puzzle[i]
+            puzzle[i] = 0
+            if len(_solve(puzzle, 2)) == 1:
+                count -= 1
+            else:
+                puzzle[i] = saved
+        if count == target:
+            return {
+                "puzzle": puzzle,
+                "solution": solution,
+                "clues": target,
+                "level": level,
+            }
+
+
+def main(argv):
+    if len(argv) == 3 and argv[1] == "neu" and argv[2] in CLUES:
+        print(json.dumps(generate(argv[2])))
+        return 0
+    sys.stderr.write("Aufruf: python engine.py neu <%s>\n" % "|".join(CLUES))
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

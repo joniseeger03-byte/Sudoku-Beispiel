@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+"""
+test_spiel.py – minimal test runner for engine.py
+
+Only the Python standard library is used.  The script imports *engine* and
+checks the acceptance criteria A1-A3 (the UI-related criteria are ignored
+as required).  For each criterion a single line "OK <criterion>" is printed.
+If a check fails the line "FEHLER <criterion>" is printed and the script
+exits with status 1.
+"""
+
+import sys
+import json
+import subprocess
+from pathlib import Path
+
+# ----------------------------------------------------------------------
+# import the engine module (must be in the same directory)
+# ----------------------------------------------------------------------
+try:
+    import engine
+except Exception:
+    print("FEHLER IMPORT_ENGINE")
+    sys.exit(1)
+
+
+# ----------------------------------------------------------------------
+# Helper assertions
+# ----------------------------------------------------------------------
+def ok(msg):
+    print(f"OK {msg}")
+
+
+def fail(msg):
+    print(f"FEHLER {msg}")
+    sys.exit(1)
+
+
+def check_structure(result, level, tag):
+    """Check the contract of a generate() result; calls fail() on violation."""
+    if not isinstance(result, dict):
+        fail(f"{tag}_not_dict")
+    for key in ("puzzle", "solution", "clues", "level"):
+        if key not in result:
+            fail(f"{tag}_missing_key_{key}")
+
+    puzzle = result["puzzle"]
+    solution = result["solution"]
+    clues = result["clues"]
+    lvl = result["level"]
+
+    if not (isinstance(puzzle, list) and isinstance(solution, list)):
+        fail(f"{tag}_wrong_type_lists")
+    if len(puzzle) != 81 or len(solution) != 81:
+        fail(f"{tag}_wrong_length")
+
+    expected = engine.CLUES[level]
+    actual = sum(1 for v in puzzle if v != 0)
+    if actual != expected:
+        fail(f"{tag}_clue_count_exp{expected}_got{actual}")
+    if clues != expected:
+        fail(f"{tag}_clues_field_exp{expected}_got{clues}")
+    if lvl != level:
+        fail(f"{tag}_level_mismatch")
+    return puzzle, solution
+
+
+def check_solution_valid(puzzle, solution, tag):
+    """Solution must be a valid complete grid and consistent with the puzzle."""
+    if any((not isinstance(v, int)) or v < 1 or v > 9 for v in solution):
+        fail(f"{tag}_solution_values")
+    digits = set(range(1, 10))
+    for r in range(9):
+        if set(solution[r * 9:(r + 1) * 9]) != digits:
+            fail(f"{tag}_solution_row_{r}")
+    for c in range(9):
+        if set(solution[c::9]) != digits:
+            fail(f"{tag}_solution_col_{c}")
+    for br in range(3):
+        for bc in range(3):
+            block = {solution[(br * 3 + r) * 9 + bc * 3 + c]
+                     for r in range(3) for c in range(3)}
+            if block != digits:
+                fail(f"{tag}_solution_block_{br}{bc}")
+    for i in range(81):
+        if puzzle[i] != 0 and puzzle[i] != solution[i]:
+            fail(f"{tag}_puzzle_solution_mismatch_{i}")
+
+
+# ----------------------------------------------------------------------
+# A1 – generate() output structure and clue count
+# ----------------------------------------------------------------------
+def test_generate():
+    for level in engine.CLUES:
+        for i in range(10):          # 10 puzzles per level
+            try:
+                result = engine.generate(level)
+            except Exception:
+                fail(f"A1_generate_exception_{level}_{i}")
+            check_structure(result, level, f"A1_{level}_{i}")
+    ok("A1")
+
+
+# ----------------------------------------------------------------------
+# A2 – unique solution (solutions(puzzle, 2) returns at most one)
+# ----------------------------------------------------------------------
+def test_unique_solution():
+    for level in engine.CLUES:
+        for i in range(10):
+            result = engine.generate(level)
+            puzzle = result["puzzle"]
+            sols = engine.solutions(puzzle, 2)
+            if not isinstance(sols, list):
+                fail(f"A2_not_list_{level}_{i}")
+            if len(sols) > 1:
+                fail(f"A2_multiple_solutions_{level}_{i}")
+    ok("A2")
+
+
+# ----------------------------------------------------------------------
+# A3 – CLI API outputs valid JSON that satisfies the generate() contract.
+# generate() is random, so the CLI result cannot be compared with a
+# separate generate() call; the contract itself is verified instead.
+# ----------------------------------------------------------------------
+def test_cli_api():
+    script = Path(__file__).with_name("engine.py")
+    for level in engine.CLUES:
+        for i in range(10):
+            proc = subprocess.run(
+                [sys.executable, str(script), "neu", level],
+                capture_output=True,
+                text=True,
+            )
+            if proc.returncode != 0:
+                fail(f"A3_cli_nonzero_exit_{level}_{i}")
+
+            try:
+                cli_output = json.loads(proc.stdout)
+            except json.JSONDecodeError:
+                fail(f"A3_cli_invalid_json_{level}_{i}")
+
+            tag = f"A3_cli_{level}_{i}"
+            puzzle, solution = check_structure(cli_output, level, tag)
+            check_solution_valid(puzzle, solution, tag)
+
+            sols = engine.solutions(puzzle, 2)
+            if len(sols) != 1:
+                fail(f"{tag}_not_unique")
+            if list(sols[0]) != solution:
+                fail(f"{tag}_solution_differs")
+
+    ok("A3")
+
+
+# ----------------------------------------------------------------------
+# Run all tests
+# ----------------------------------------------------------------------
+if __name__ == "__main__":
+    test_generate()
+    test_unique_solution()
+    test_cli_api()
+    # all passed
+    sys.exit(0)

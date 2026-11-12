@@ -1,0 +1,35 @@
+{
+ "id": "01-recherche_b",
+ "knoten": "recherche_b",
+ "runde": 1,
+ "status": "ok",
+ "start": 1794315046.696605,
+ "anbieter": "openrouter",
+ "modell": "google/gemma-3-27b-it",
+ "prompt_datei": "prompts/recherche_b.md",
+ "prompt": "Du recherchierst einen guten Spielablauf für ein Browser-Sudoku: Eingabe, Fehleranzeige, Notizen und Hilfen.\nSchreibe Markdown mit den Abschnitten Empfehlung, Annahmen und Quellen.\nNenne nur Quellen, die du sicher kennst. Schreibe sonst „keine gesicherte Quelle“.\nLiegt eine Prüfung (02-pruefung.md) bei, arbeite ihre Einwände ein.",
+ "kontext": [
+  {
+   "name": "00-auftrag.md",
+   "quelle": "runs/2026-11-10-135046/00-auftrag.md",
+   "text": "# Auftrag: Sudoku fürs Web\n\nBaue ein spielbares Sudoku für den Browser, ohne Backend.\n\n- Drei Schwierigkeitsgrade: leicht, mittel, schwer\n- Eingabe per Tastatur und Touch\n- Jedes Rätsel hat genau eine Lösung\n- Konflikte werden markiert\n"
+  }
+ ],
+ "anfrage": {
+  "url": "https://openrouter.ai/api/v1/chat/completions",
+  "key": "OPENROUTER_API_KEY",
+  "body": {
+   "model": "google/gemma-3-27b-it",
+   "stream": true,
+   "max_tokens": 8000,
+   "messages": [
+    {
+     "role": "user",
+     "content": "Du recherchierst einen guten Spielablauf für ein Browser-Sudoku: Eingabe, Fehleranzeige, Notizen und Hilfen.\nSchreibe Markdown mit den Abschnitten Empfehlung, Annahmen und Quellen.\nNenne nur Quellen, die du sicher kennst. Schreibe sonst „keine gesicherte Quelle“.\nLiegt eine Prüfung (02-pruefung.md) bei, arbeite ihre Einwände ein.\n\n--- 00-auftrag.md ---\n# Auftrag: Sudoku fürs Web\n\nBaue ein spielbares Sudoku für den Browser, ohne Backend.\n\n- Drei Schwierigkeitsgrade: leicht, mittel, schwer\n- Eingabe per Tastatur und Touch\n- Jedes Rätsel hat genau eine Lösung\n- Konflikte werden markiert\n"
+    }
+   ]
+  }
+ },
+ "dauer": 58.9,
+ "antwort_zeichen": 7266
+}

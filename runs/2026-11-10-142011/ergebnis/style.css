@@ -1,0 +1,300 @@
+:root {
+  --schreibtisch: #CFC4A8;
+  --papier: #F3EBD6;
+  --faser: #E6DCC0;
+  --tinte: #2B2A1E;
+  --linie: #A99F80;
+  --druck: #1F3A2B;
+  --sepia: #7A4A1E;
+  --gelb: #F2D77A;
+  --bezug: #EADFB8;
+  --krapp: #E9B8A6;
+  --krapprot: #8C1D18;
+  --streifen: #C4553E;
+  --blatt: #4F7A3A;
+  --karte: min(460px, calc(100vw - 12px));
+  --brett: calc(var(--karte) - 48px);
+  --zelle: calc(var(--brett) / 9);
+  --mono: "Courier New", ui-monospace, monospace;
+  --serif: Georgia, "Times New Roman", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  min-height: 100vh;
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,.015) 0 2px, transparent 2px 6px),
+    var(--schreibtisch);
+  color: var(--tinte);
+  font-family: var(--mono);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 6px;
+}
+
+.karte {
+  position: relative;
+  width: var(--karte);
+  padding: 20px 22px 18px;
+  background:
+    repeating-linear-gradient(90deg, rgba(230,220,192,.55) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(230,220,192,.35) 0 1px, transparent 1px 11px),
+    var(--papier);
+  border: 2px solid var(--tinte);
+  outline: 2px solid var(--tinte);
+  outline-offset: -8px;
+}
+
+.etikett {
+  margin: 0 auto 14px;
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1px solid var(--tinte);
+  background: var(--faser);
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: .12em;
+  font-size: 15px;
+  text-align: center;
+}
+
+.reiter {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.reiter button {
+  min-height: 44px;
+  font-family: var(--mono);
+  font-variant: small-caps;
+  letter-spacing: .1em;
+  font-size: 16px;
+  background: var(--faser);
+  color: var(--tinte);
+  border: 2px solid var(--tinte);
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+.reiter button.aktiv {
+  background: var(--druck);
+  color: var(--papier);
+}
+
+.rahmen {
+  border: 4px solid var(--tinte);
+  width: calc(var(--brett) + 8px);
+  margin: 0 auto;
+}
+
+.brett {
+  width: var(--brett);
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  background: var(--papier);
+}
+
+.feld {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+  font-family: var(--serif);
+  font-size: calc(var(--zelle) * .6);
+  line-height: 1;
+  color: var(--sepia);
+  font-weight: 400;
+  background: var(--papier);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+.feld.br { border-right: 3px solid var(--tinte); }
+.feld.bb { border-bottom: 3px solid var(--tinte); }
+
+.feld.vorgegeben {
+  color: var(--druck);
+  font-weight: 700;
+  background: #EDE3C8;
+}
+
+.feld.bezug { background: var(--bezug); }
+
+.feld.konflikt {
+  background: var(--krapp);
+  color: var(--krapprot);
+  font-weight: 700;
+}
+.feld.konflikt::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 5px;
+  background: repeating-linear-gradient(45deg, var(--streifen) 0 3px, transparent 3px 6px);
+  pointer-events: none;
+}
+
+.feld.selected {
+  background: var(--gelb);
+  box-shadow: inset 0 0 0 3px var(--druck);
+  animation: ein 150ms ease-out;
+}
+.feld.selected.konflikt { background: var(--krapp); }
+.feld.selected.vorgegeben { background: var(--gelb); }
+.feld.selected.vorgegeben.konflikt { background: var(--krapp); }
+
+.feld:focus-visible {
+  outline: 3px solid var(--druck);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+@keyframes ein { from { opacity: .4; } to { opacity: 1; } }
+
+.meldung {
+  min-height: 1.4em;
+  margin: 10px 0 6px;
+  text-align: center;
+  font-variant: small-caps;
+  letter-spacing: .1em;
+  font-size: 16px;
+  color: var(--blatt);
+  font-weight: 700;
+}
+
+.ziffern {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+.ziffern button {
+  min-height: 48px;
+  min-width: 48px;
+  font-family: var(--serif);
+  font-size: 24px;
+  color: var(--tinte);
+  background: var(--faser);
+  border: 2px solid var(--tinte);
+  border-radius: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ziffern button:active { background: var(--gelb); }
+
+.links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 14px;
+}
+.textlink {
+  background: none;
+  border: 0;
+  padding: 8px 4px;
+  min-height: 36px;
+  font-family: var(--mono);
+  font-variant: small-caps;
+  letter-spacing: .08em;
+  font-size: 14px;
+  color: var(--tinte);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--druck);
+  outline-offset: 2px;
+}
+
+/* Gelöst */
+body.geloest .karte {
+  border-color: var(--blatt);
+  outline-color: var(--blatt);
+}
+body.geloest .etikett { border-color: var(--blatt); color: var(--blatt); }
+body.geloest .rahmen { border-color: var(--blatt); }
+body.geloest .karte::after {
+  content: "Bestimmt";
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  padding: 2px 12px;
+  border: 3px double var(--blatt);
+  color: var(--blatt);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: .15em;
+  font-size: 20px;
+  transform: rotate(-8deg);
+  background: rgba(243,235,214,.85);
+  pointer-events: none;
+}
+
+/* Toast und Modal */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: var(--tinte);
+  color: var(--papier);
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  z-index: 20;
+}
+.toast[hidden], .modal[hidden] { display: none; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(43,42,30,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+.modal-box {
+  background: var(--papier);
+  border: 2px solid var(--tinte);
+  outline: 2px solid var(--tinte);
+  outline-offset: -7px;
+  padding: 26px 28px 20px;
+  text-align: center;
+  max-width: 88vw;
+  font-size: 17px;
+}
+.modal-box p { margin: 0 0 16px; }
+.modal-knoepfe { display: flex; gap: 10px; justify-content: center; }
+.modal-knoepfe button {
+  min-height: 44px;
+  padding: 0 16px;
+  font-family: var(--mono);
+  font-variant: small-caps;
+  font-size: 15px;
+  background: var(--faser);
+  color: var(--tinte);
+  border: 2px solid var(--tinte);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-knoepfe #modal-ja { background: var(--druck); color: var(--papier); }
+
+@media (max-width: 600px) {
+  body { padding: 6px 6px; }
+  .karte { padding: 16px 20px 14px; }
+}

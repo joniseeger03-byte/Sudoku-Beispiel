@@ -1,0 +1,618 @@
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku · Herbarium-Bogen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="karte">
+  <div class="etikett" id="etikett">Sudoku · Stufe: <span id="stufenname">mittel</span></div>
+
+  <div class="reiter" role="group" aria-label="Schwierigkeitsstufe">
+    <button type="button" data-stufe="leicht" tabindex="0" aria-label="Stufe leicht">leicht</button>
+    <button type="button" data-stufe="mittel" tabindex="0" aria-label="Stufe mittel">mittel</button>
+    <button type="button" data-stufe="schwer" tabindex="0" aria-label="Stufe schwer">schwer</button>
+  </div>
+
+  <div class="rahmen">
+    <div class="brett" id="brett" role="grid" aria-label="Sudoku-Brett"></div>
+  </div>
+
+  <p class="meldung" id="meldung" role="status" aria-live="polite"></p>
+
+  <div class="ziffern" role="group" aria-label="Ziffernfeld">
+    <button type="button" data-digit="1" tabindex="0" aria-label="Ziffer 1">1</button>
+    <button type="button" data-digit="2" tabindex="0" aria-label="Ziffer 2">2</button>
+    <button type="button" data-digit="3" tabindex="0" aria-label="Ziffer 3">3</button>
+    <button type="button" data-digit="4" tabindex="0" aria-label="Ziffer 4">4</button>
+    <button type="button" data-digit="5" tabindex="0" aria-label="Ziffer 5">5</button>
+    <button type="button" data-digit="6" tabindex="0" aria-label="Ziffer 6">6</button>
+    <button type="button" data-digit="7" tabindex="0" aria-label="Ziffer 7">7</button>
+    <button type="button" data-digit="8" tabindex="0" aria-label="Ziffer 8">8</button>
+    <button type="button" data-digit="9" tabindex="0" aria-label="Ziffer 9">9</button>
+    <button type="button" data-digit="0" tabindex="0" aria-label="Feld löschen">⌫</button>
+  </div>
+
+  <div class="links">
+    <button type="button" class="textlink" data-hint tabindex="0" aria-label="Hinweis geben">Hinweis (<span id="hinweisrest">3</span>)</button>
+    <button type="button" class="textlink" data-show-solution tabindex="0" aria-label="Lösung anzeigen">Lösung anzeigen</button>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="alert" hidden></div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-label="Warnung">
+    <p>Cheat – bist du sicher?</p>
+    <div class="modal-knoepfe">
+      <button type="button" id="modal-nein" tabindex="0" aria-label="Abbrechen">Abbrechen</button>
+      <button type="button" id="modal-ja" tabindex="0" aria-label="Lösung anzeigen bestätigen">Anzeigen</button>
+    </div>
+  </div>
+</div>
+
+<script src="board.js"></script>
+</body>
+</html>
+```
+
+```javascript
+(function () {
+  'use strict';
+
+  var KEY = 'sudoku-herbarium-v1';
+  var brett = document.getElementById('brett');
+  var cells = [];
+  var state = {
+    stufe: 'mittel',
+    puzzle: [],
+    solution: [],
+    grid: [],
+    selected: -1,
+    hints: 3,
+    shown: false
+  };
+
+  function el(id) { return document.getElementById(id); }
+
+  // ---------- Aufbau ----------
+  for (var i = 0; i < 81; i++) {
+    var c = document.createElement('div');
+    var r = Math.floor(i / 9), col = i % 9;
+    c.className = 'feld';
+    if (col % 3 === 2 && col !== 8) c.className += ' br';
+    if (r % 3 === 2 && r !== 8) c.className += ' bb';
+    c.setAttribute('data-index', String(i));
+    c.setAttribute('role', 'gridcell');
+    c.setAttribute('tabindex', '0');
+    c.setAttribute('aria-label', 'Zeile ' + (r + 1) + ', Spalte ' + (col + 1));
+    brett.appendChild(c);
+    cells.push(c);
+  }
+
+  // ---------- Konflikte ----------
+  function conflicts(grid) {
+    var out = new Set();
+    var groups = [], k, j;
+    for (k = 0; k < 9; k++) {
+      var row = [], colm = [], blk = [];
+      for (j = 0; j < 9; j++) {
+        row.push(k * 9 + j);
+        colm.push(j * 9 + k);
+        blk.push((Math.floor(k / 3) * 3 + Math.floor(j / 3)) * 9 + (k % 3) * 3 + (j % 3));
+      }
+      groups.push(row, colm, blk);
+    }
+    groups.forEach(function (g) {
+      var seen = {};
+      g.forEach(function (idx) {
+        var v = grid[idx];
+        if (!v) return;
+        (seen[v] = seen[v] || []).push(idx);
+      });
+      Object.keys(seen).forEach(function (v) {
+        if (seen[v].length > 1) seen[v].forEach(function (x) { out.add(x); });
+      });
+    });
+    return out;
+  }
+
+  // ---------- Darstellung ----------
+  function render() {
+    var conf = conflicts(state.grid);
+    var sel = state.selected;
+    var sr = sel >= 0 ? Math.floor(sel / 9) : -1;
+    var sc = sel >= 0 ? sel % 9 : -1;
+    for (var i = 0; i < 81; i++) {
+      var c = cells[i];
+      var v = state.grid[i];
+      var r = Math.floor(i / 9), col = i % 9;
+      c.textContent = v ? String(v) : '';
+      var cls = 'feld';
+      if (col % 3 === 2 && col !== 8) cls += ' br';
+      if (r % 3 === 2 && r !== 8) cls += ' bb';
+      if (state.puzzle[i]) cls += ' vorgegeben';
+      if (conf.has(i)) cls += ' konflikt';
+      if (i === sel) cls += ' selected';
+      else if (sel >= 0 && (r === sr || col === sc ||
+        (Math.floor(r / 3) === Math.floor(sr / 3) && Math.floor(col / 3) === Math.floor(sc / 3)))) {
+        cls += ' bezug';
+      }
+      c.className = cls;
+      c.setAttribute('aria-selected', i === sel ? 'true' : 'false');
+    }
+    var full = state.grid.length === 81 && state.grid.every(function (x) { return x > 0; });
+    var solved = state.shown || (full && conf.size === 0);
+    document.body.classList.toggle('geloest', solved);
+    el('meldung').textContent = solved ? 'Bestimmt – richtig gelöst!' : '';
+    el('hinweisrest').textContent = String(state.hints);
+    el('stufenname').textContent = state.stufe;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stufe]'), function (b) {
+      var on = b.getAttribute('data-stufe') === state.stufe;
+      b.classList.toggle('aktiv', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignorieren */ }
+  }
+
+  function toast(msg) {
+    var t = el('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toast.h);
+    toast.h = setTimeout(function () { t.hidden = true; }, 2500);
+  }
+
+  // ---------- Aktionen ----------
+  function select(i) {
+    if (i < 0 || i > 80) return;
+    state.selected = i;
+    render();
+    save();
+  }
+
+  function setDigit(d) {
+    var i = state.selected;
+    if (i < 0 || state.puzzle[i] || state.shown) return;
+    state.grid[i] = d;
+    render();
+    save();
+  }
+
+  function applyPuzzle(data, stufe) {
+    state.stufe = stufe;
+    state.puzzle = data.puzzle.slice();
+    state.solution = (data.solution || []).slice();
+    state.grid = data.puzzle.slice();
+    state.hints = 3;
+    state.shown = false;
+    var first = state.puzzle.indexOf(0);
+    state.selected = first >= 0 ? first : 0;
+    render();
+    save();
+  }
+
+  function neu(stufe) {
+    fetch('api/neu?stufe=' + stufe)
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || !data.puzzle || data.puzzle.length !== 81) throw new Error('Ungültige Daten');
+        applyPuzzle(data, stufe);
+      })
+      .catch(function () { toast('Rätsel konnte nicht geladen werden.'); });
+  }
+
+  function hint() {
+    if (state.shown) return;
+    if (state.hints <= 0) { toast('Keine Hinweise mehr übrig.'); return; }
+    var empty = [];
+    for (var i = 0; i < 81; i++) if (!state.grid[i]) empty.push(i);
+    if (!empty.length || !state.solution.length) return;
+    var pick = empty[Math.floor(Math.random() * empty.length)];
+    state.grid[pick] = state.solution[pick];
+    state.hints--;
+    state.selected = pick;
+    render();
+    save();
+  }
+
+  function showSolution() {
+    if (!state.solution.length) return;
+    state.grid = state.solution.slice();
+    state.shown = true;
+    el('modal').hidden = true;
+    render();
+    save();
+  }
+
+  // ---------- Ereignisse ----------
+  brett.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-index]');
+    if (t) select(parseInt(t.getAttribute('data-index'), 10));
+  });
+  brett.addEventListener('focusin', function (e) {
+    var t = e.target.closest && e.target.closest('[data-index]');
+    if (t && state.selected !== parseInt(t.getAttribute('data-index'), 10)) {
+      select(parseInt(t.getAttribute('data-index'), 10));
+    }
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-digit]'), function (b) {
+    b.addEventListener('click', function () {
+      setDigit(parseInt(b.getAttribute('data-digit'), 10));
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-stufe]'), function (b) {
+    b.addEventListener('click', function () { neu(b.getAttribute('data-stufe')); });
+  });
+  document.querySelector('[data-hint]').addEventListener('click', hint);
+  document.querySelector('[data-show-solution]').addEventListener('click', function () {
+    el('modal').hidden = false;
+    el('modal-nein').focus();
+  });
+  el('modal-nein').addEventListener('click', function () { el('modal').hidden = true; });
+  el('modal-ja').addEventListener('click', showSolution);
+
+  document.addEventListener('keydown', function (e) {
+    if (!el('modal').hidden) {
+      if (e.key === 'Escape') el('modal').hidden = true;
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key, i = state.selected;
+    if (k >= '1' && k <= '9' && k.length === 1) {
+      e.preventDefault();
+      setDigit(parseInt(k, 10));
+    } else if (k === 'Backspace' || k === 'Delete') {
+      e.preventDefault();
+      setDigit(0);
+    } else if (k.indexOf('Arrow') === 0) {
+      e.preventDefault();
+      if (i < 0) i = 0;
+      var r = Math.floor(i / 9), c = i % 9;
+      if (k === 'ArrowUp') r = Math.max(0, r - 1);
+      if (k === 'ArrowDown') r = Math.min(8, r + 1);
+      if (k === 'ArrowLeft') c = Math.max(0, c - 1);
+      if (k === 'ArrowRight') c = Math.min(8, c + 1);
+      select(r * 9 + c);
+    } else if (k.length === 1 && /\S/.test(k) && !/^[a-z]$/i.test(k) === false) {
+      toast('Nur die Ziffern 1–9 sind erlaubt.');
+    }
+  });
+
+  // ---------- Start ----------
+  var restored = false;
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) {
+      var s = JSON.parse(raw);
+      if (s && s.puzzle && s.puzzle.length === 81 && s.grid && s.grid.length === 81) {
+        state = {
+          stufe: s.stufe || 'mittel',
+          puzzle: s.puzzle,
+          solution: s.solution || [],
+          grid: s.grid,
+          selected: typeof s.selected === 'number' ? s.selected : 0,
+          hints: typeof s.hints === 'number' ? s.hints : 3,
+          shown: !!s.shown
+        };
+        restored = true;
+        render();
+      }
+    }
+  } catch (e) { restored = false; }
+  if (!restored) neu('mittel');
+})();
+```
+
+```css
+:root {
+  --schreibtisch: #CFC4A8;
+  --papier: #F3EBD6;
+  --faser: #E6DCC0;
+  --tinte: #2B2A1E;
+  --linie: #A99F80;
+  --druck: #1F3A2B;
+  --sepia: #7A4A1E;
+  --gelb: #F2D77A;
+  --bezug: #EADFB8;
+  --krapp: #E9B8A6;
+  --krapprot: #8C1D18;
+  --streifen: #C4553E;
+  --blatt: #4F7A3A;
+  --karte: min(460px, calc(100vw - 12px));
+  --brett: calc(var(--karte) - 48px);
+  --zelle: calc(var(--brett) / 9);
+  --mono: "Courier New", ui-monospace, monospace;
+  --serif: Georgia, "Times New Roman", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  min-height: 100vh;
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,.015) 0 2px, transparent 2px 6px),
+    var(--schreibtisch);
+  color: var(--tinte);
+  font-family: var(--mono);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px 6px;
+}
+
+.karte {
+  position: relative;
+  width: var(--karte);
+  padding: 20px 22px 18px;
+  background:
+    repeating-linear-gradient(90deg, rgba(230,220,192,.55) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(230,220,192,.35) 0 1px, transparent 1px 11px),
+    var(--papier);
+  border: 2px solid var(--tinte);
+  outline: 2px solid var(--tinte);
+  outline-offset: -8px;
+}
+
+.etikett {
+  margin: 0 auto 14px;
+  width: max-content;
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1px solid var(--tinte);
+  background: var(--faser);
+  font-variant: small-caps;
+  text-transform: lowercase;
+  letter-spacing: .12em;
+  font-size: 15px;
+  text-align: center;
+}
+
+.reiter {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.reiter button {
+  min-height: 44px;
+  font-family: var(--mono);
+  font-variant: small-caps;
+  letter-spacing: .1em;
+  font-size: 16px;
+  background: var(--faser);
+  color: var(--tinte);
+  border: 2px solid var(--tinte);
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+.reiter button.aktiv {
+  background: var(--druck);
+  color: var(--papier);
+}
+
+.rahmen {
+  border: 4px solid var(--tinte);
+  width: calc(var(--brett) + 8px);
+  margin: 0 auto;
+}
+
+.brett {
+  width: var(--brett);
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  grid-template-rows: repeat(9, 1fr);
+  background: var(--papier);
+}
+
+.feld {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--linie);
+  border-bottom: 1px solid var(--linie);
+  font-family: var(--serif);
+  font-size: calc(var(--zelle) * .6);
+  line-height: 1;
+  color: var(--sepia);
+  font-weight: 400;
+  background: var(--papier);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+}
+.feld:nth-child(9n) { border-right: 0; }
+.feld:nth-child(n+73) { border-bottom: 0; }
+.feld.br { border-right: 3px solid var(--tinte); }
+.feld.bb { border-bottom: 3px solid var(--tinte); }
+
+.feld.vorgegeben {
+  color: var(--druck);
+  font-weight: 700;
+  background: #EDE3C8;
+}
+
+.feld.bezug { background: var(--bezug); }
+
+.feld.konflikt {
+  background: var(--krapp);
+  color: var(--krapprot);
+  font-weight: 700;
+}
+.feld.konflikt::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 5px;
+  background: repeating-linear-gradient(45deg, var(--streifen) 0 3px, transparent 3px 6px);
+  pointer-events: none;
+}
+
+.feld.selected {
+  background: var(--gelb);
+  box-shadow: inset 0 0 0 3px var(--druck);
+  animation: ein 150ms ease-out;
+}
+.feld.selected.konflikt { background: var(--krapp); }
+.feld.selected.vorgegeben { background: var(--gelb); }
+.feld.selected.vorgegeben.konflikt { background: var(--krapp); }
+
+.feld:focus-visible {
+  outline: 3px solid var(--druck);
+  outline-offset: 2px;
+  z-index: 2;
+}
+
+@keyframes ein { from { opacity: .4; } to { opacity: 1; } }
+
+.meldung {
+  min-height: 1.4em;
+  margin: 10px 0 6px;
+  text-align: center;
+  font-variant: small-caps;
+  letter-spacing: .1em;
+  font-size: 16px;
+  color: var(--blatt);
+  font-weight: 700;
+}
+
+.ziffern {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+.ziffern button {
+  min-height: 48px;
+  min-width: 48px;
+  font-family: var(--serif);
+  font-size: 24px;
+  color: var(--tinte);
+  background: var(--faser);
+  border: 2px solid var(--tinte);
+  border-radius: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ziffern button:active { background: var(--gelb); }
+
+.links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 14px;
+}
+.textlink {
+  background: none;
+  border: 0;
+  padding: 8px 4px;
+  min-height: 36px;
+  font-family: var(--mono);
+  font-variant: small-caps;
+  letter-spacing: .08em;
+  font-size: 14px;
+  color: var(--tinte);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid var(--druck);
+  outline-offset: 2px;
+}
+
+/* Gelöst */
+body.geloest .karte {
+  border-color: var(--blatt);
+  outline-color: var(--blatt);
+}
+body.geloest .etikett { border-color: var(--blatt); color: var(--blatt); }
+body.geloest .rahmen { border-color: var(--blatt); }
+body.geloest .karte::after {
+  content: "Bestimmt";
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  padding: 2px 12px;
+  border: 3px double var(--blatt);
+  color: var(--blatt);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: .15em;
+  font-size: 20px;
+  transform: rotate(-8deg);
+  background: rgba(243,235,214,.85);
+  pointer-events: none;
+}
+
+/* Toast und Modal */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  background: var(--tinte);
+  color: var(--papier);
+  padding: 10px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  z-index: 20;
+}
+.toast[hidden], .modal[hidden] { display: none; }
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(43,42,30,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+.modal-box {
+  background: var(--papier);
+  border: 2px solid var(--tinte);
+  outline: 2px solid var(--tinte);
+  outline-offset: -7px;
+  padding: 26px 28px 20px;
+  text-align: center;
+  max-width: 88vw;
+  font-size: 17px;
+}
+.modal-box p { margin: 0 0 16px; }
+.modal-knoepfe { display: flex; gap: 10px; justify-content: center; }
+.modal-knoepfe button {
+  min-height: 44px;
+  padding: 0 16px;
+  font-family: var(--mono);
+  font-variant: small-caps;
+  font-size: 15px;
+  background: var(--faser);
+  color: var(--tinte);
+  border: 2px solid var(--tinte);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-knoepfe #modal-ja { background: var(--druck); color: var(--papier); }
+
+@media (max-width: 600px) {
+  body { padding: 6px 6px; }
+  .karte { padding: 16px 20px 14px; }
+}
+```
