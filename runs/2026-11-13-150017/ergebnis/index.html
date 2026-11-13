@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Seekarte</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="karte">
+  <h1>Sudoku <span>Seekarte</span></h1>
+
+  <div class="stufen" role="group" aria-label="Stufe">
+    <span class="label">Stufe</span>
+    <button type="button" data-stufe="leicht">Leicht</button>
+    <button type="button" data-stufe="mittel" class="aktiv">Mittel</button>
+    <button type="button" data-stufe="schwer">Schwer</button>
+  </div>
+
+  <div id="meldung" class="kartusche" role="status" aria-live="polite" hidden>
+    <div>Kurs erreicht – Rätsel gelöst!</div>
+  </div>
+
+  <div class="skala">
+    <div class="rahmen">
+      <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+    </div>
+  </div>
+
+  <div class="werkzeuge">
+    <button type="button" id="notizen" aria-pressed="false"><span class="kompass">N</span>Notizen</button>
+    <button type="button" id="fehler">Fehler zeigen</button>
+    <button type="button" id="moegliche">Mögliche Werte</button>
+  </div>
+  <p id="status" class="status" aria-live="polite">Feld wählen und Ziffer setzen.</p>
+
+  <div class="ziffern" id="ziffern">
+    <button type="button" data-digit="1">1</button>
+    <button type="button" data-digit="2">2</button>
+    <button type="button" data-digit="3">3</button>
+    <button type="button" data-digit="4">4</button>
+    <button type="button" data-digit="5">5</button>
+    <button type="button" data-digit="6">6</button>
+    <button type="button" data-digit="7">7</button>
+    <button type="button" data-digit="8">8</button>
+    <button type="button" data-digit="9">9</button>
+    <button type="button" data-digit="0" aria-label="Löschen">✕</button>
+  </div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+
+▶ Bash: ls; python ../../../orchestrator/ui_check.py .; python test_spiel.py | tail -15
+
+
+▶ Read: C:\Users\Jonas Seeger\Documents\TechTalk\beispiel\runs\2026-11-13-145700\ergebnis\board.js
+
+# Integrationsbericht
+
+**Was war kaputt:** Nichts, das ich gefunden habe.
+
+- **Leere Felder:** `board.js` stellt 0 als leeren Text dar, passend zur Engine. Die Konflikterkennung ignoriert 0 ebenfalls.
+- **Datenformat:** Die Oberfläche liest `puzzle` aus dem JSON, wie es `generate` liefert. Die Anfrage geht an `api/neu?stufe=…` und damit relativ zur Seite.
+- **Bedienvertrag:** `board.js` setzt `data-index`, `data-digit` und `data-stufe`. Die Tastatur läuft über `keydown` auf `document`. Die Klassen `ausgewaehlt`, `konflikt` und `geloest` werden gesetzt.
+
+**Was ich geändert habe:** Nichts. Ich habe weder `engine.py` noch die Oberfläche angefasst, und ich habe keine Dateien angelegt.
+
+**Prüfung:**
+- `python ../../../orchestrator/ui_check.py .`: Alle Prüfungen in der Ausgabe stehen auf OK. Das gilt für Raster, Auswahl, Eingabe per Klick und Tastatur, Löschen, Schutz der Vorgaben, Konflikt, Stufenwechsel, Engine-Herkunft des Rätsels und Sieg. Den Exit-Code habe ich nicht gesondert abgefragt.
+- `python test_spiel.py`: A1 bis A5 sind OK, am Ende steht „Alle Kriterien erfüllt.“ Auch hier habe ich den Exit-Code nicht gesondert abgefragt.
+
+**Offen geblieben:**
+- `touchstart` wird nicht explizit verwendet. Touch läuft über `click`, was auf mobilen Browsern dieselbe Wirkung hat.
+- Das Aussehen gegen `design.md` habe ich nicht geprüft.

@@ -248,8 +248,12 @@ details.mehr[open] > summary { margin-bottom: 10px; }
 @media (prefers-reduced-motion: reduce) { .st.run::before { animation: none; } }
 /* Start-Gruppe oben und Entscheidungs-Leiste für den angezeigten Lauf */
 .seg .lbl { padding: 6px 10px; font-size: .85rem; color: var(--muted); border-right: 1px solid var(--line); background: var(--bg); align-self: center; }
-.startgruppe button + button { border-left: 1px solid var(--line); }
-.startgruppe button.gesperrt { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--c4); cursor: help; }
+button.gesperrt, .seg button.gesperrt { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--c4); cursor: help; }
+#run { max-width: 24em; }
+.demogruppe button + button { border-left: 1px solid var(--line); }
+.demogruppe [data-tempo] { padding: 6px 9px; font-size: .85rem; color: var(--muted); }
+.demogruppe [data-tempo].on { background: var(--soft); color: var(--accent); font-weight: 700; }
+.demogruppe #startDemo { font-weight: 600; }
 .entscheidung { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 4px; background: var(--warnsoft); border: 1.5px solid var(--warn); }
 .entscheidung.demo { background: var(--soft); border-color: var(--accent); }
 .entscheidung .aktionen { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -270,18 +274,17 @@ details.mehr[open] > summary { margin-bottom: 10px; }
       <span class="zustand" id="zustand"></span>
       <span class="zustand runstate fail" id="startfehler" hidden></span>
       <a class="btn" id="play" hidden target="_blank" rel="noopener">Ergebnis spielen</a>
-      <div class="seg startgruppe" id="startgruppe" role="group" aria-label="Neuen Lauf starten" hidden>
-        <span class="lbl">Neuer Lauf</span><button id="startDemo">▶ Demo</button><button id="startLive">▶ Echter Lauf</button>
+      <select id="run" aria-label="Lauf wählen" hidden></select>
+      <div class="seg demogruppe" id="demogruppe" role="group" aria-label="Gewählten Lauf als Demo abspielen" hidden>
+        <button id="startDemo">▶ Demo</button><button data-tempo="1">1×</button><button data-tempo="2">2×</button><button data-tempo="4">4×</button><button data-tempo="8">8×</button>
       </div>
+      <button class="btn" id="startLive" hidden>▶ Echter Lauf</button>
       <button class="btn stopp" id="stopp" hidden>■ Abbrechen</button>
-      <button class="btn" id="mehr" aria-expanded="false">Lauf ▾</button>
+      <button class="btn" id="mehr" aria-expanded="false">Details ▾</button>
     </div>
   </div>
   <div class="laufbox" id="laufbox" hidden>
     <span class="badge" id="modus" hidden></span>
-    <select id="run" aria-label="Lauf wählen"></select>
-    <label>Demo spielt ab <select id="aufz" aria-label="Aufzeichnung für die Demo"></select></label>
-    <label>Tempo <select id="tempo"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label>
     <div class="startline" id="startline"></div>
     <details class="mehr" id="protokoll">
       <summary>Protokoll: jeder Schritt dieses Laufs</summary>
@@ -366,9 +369,8 @@ const BAUSTEINE = [
   { t: 'kontext', name: 'Kontext' },
   { t: 'aufruf', name: 'Modell' },
   { t: 'ausgabe', name: 'Antwort' },
-  { t: 'harness', name: 'Harness' },
 ];
-const OPS = ['+', '→', '→', '→'];
+const OPS = ['+', '→', '→'];
 const ERKL = {
   prompt: { titel: 'Prompt Engineering', kern: 'Eine Datei legt Rolle, Regeln und Ausgabeformat fest.', lang: [
     'Der Prompt gehört zum Projekt: Er liegt unter <code>prompts/</code> und wird wie Code versioniert.',
@@ -385,10 +387,6 @@ const ERKL = {
   ausgabe: { titel: 'Antwort', kern: 'Zunächst nur Text. Erst der Code drumherum macht daraus Dateien.', lang: [
     'Die Antwort wird live gestreamt, man sieht das Modell arbeiten.',
     'Ob sie etwas taugt, entscheidet nicht das Modell, sondern der nächste Baustein.' ] },
-  harness: { titel: 'Harness Engineering', kern: 'Normaler Code prüft und steuert, was das Modell liefert.', lang: [
-    'Sie übernimmt Codeblöcke in Dateien, prüft die Syntax und legt fest, welche Dateien ein Agent ändern darf. Alles andere setzt sie zurück.',
-    'Über „bestanden“ entscheiden Tests und ein Browser-Skript, das das Spiel wirklich spielt. Kein Modell benotet sich selbst.',
-    'Ist eine Antwort unbrauchbar, fragt sie genau einmal mit dem Fehler nach. Scheitert es weiter, scheitert der Lauf sichtbar.' ] },
   graph: { kern: '<b>Graph:</b> Viele Agenten mit klarer Reihenfolge. <b>Loop:</b> Ein Prüfer schickt Arbeit zurück, bis sie besteht.', lang: [
     'Knoten sind Sprachmodelle, Agenten mit Werkzeugen, Skripte oder du. Kanten legen fest, was danach dran ist.',
     'Recherche und Umsetzung laufen parallel. Alle arbeiten in einem Projektordner, jeder nur an seinen eigenen Dateien.',
@@ -499,7 +497,7 @@ function waehleAgent(k) {
 function renderHead() {
   const s = D.start || {};
   $('modus').hidden = !s.modus;
-  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : s.quelle ? `Demo: Aufzeichnung von Lauf ${s.quelle}${s.tempo > 1 ? `, ${s.tempo}× so schnell` : ''}` : 'Demo';
+  $('modus').textContent = s.modus === 'live' ? 'Echte Modelle' : s.quelle ? `Demo: Aufzeichnung von „${(LAEUFE.find(r => r.id === s.quelle) || {}).name || s.quelle}“${s.tempo > 1 ? `, ${s.tempo}× so schnell` : ''}` : 'Demo';
   $('modus').className = 'badge ' + (s.modus || '');
   $('play').hidden = !D.ergebnis; $('play').href = `/ergebnis/${current}/index.html`;
   const [st, txt] = runState();
@@ -680,7 +678,7 @@ function renderPanel() {
   if (!selK) { setHtml($('who'), '<span class="empty">Noch nichts gestartet.</span>'); setHtml($('was'), ''); $('drawer').hidden = true; return; }
   const { k, node, calls, call } = selection();
   const stationen = stationenVon(node), ops = KI(node.art) ? OPS : ['→'];
-  if ((teil === 2 || tab) && !stationen.some(b => b.t === tab)) tab = teil === 2 ? (KI(node.art) ? 'prompt' : 'ausgabe') : 'harness';
+  if ((teil === 2 || tab) && !stationen.some(b => b.t === tab)) tab = teil === 2 ? (KI(node.art) ? 'prompt' : 'ausgabe') : (KI(node.art) ? null : 'harness');
   const z = stationsZustand(k, node, calls, call);
   setHtml($('who'), `<h2>${esc(node.titel)}${teil === 2 ? ` <span class="sub">· ${esc(ART[node.art])}</span>` : ''}</h2>`);
   setHtml($('was'), taetigkeit(k, node, z));   // Wer sonst gerade arbeitet, zeigt in Teil 1 die Stufen-Leiste
@@ -828,7 +826,7 @@ let PZ = null;   // Zustand des Prozesses, den das Dashboard gestartet hat
 function renderStart() {
   // Oben: global starten oder abbrechen. Die Entscheidung über den angezeigten Lauf steht in einer eigenen Leiste darunter.
   const laeuft = !!(PZ && PZ.laeuft), offen = PZ && PZ.offen_live;
-  $('startgruppe').hidden = laeuft; $('stopp').hidden = !laeuft;
+  $('demogruppe').hidden = $('startLive').hidden = laeuft; $('stopp').hidden = !laeuft;
   $('startLive').classList.toggle('gesperrt', !!offen);
   $('startLive').title = offen ? `Gesperrt: Der echte Lauf ${offen} wartet noch auf Freigabe oder Verwerfen` : 'Echter Lauf mit den Modellen aus config.json, kostet Guthaben';
   const letzt = D && D.events[D.events.length - 1];
@@ -841,14 +839,17 @@ function renderStart() {
   if (wartet || ende) {
     setHtml($('entscheidungText'), ende
       ? `<b>Demo zu Ende.</b> An dieser Stelle entscheidet im echten Lauf ein Mensch: Ergebnis prüfen, dann freigeben oder verwerfen.`
-      : `<b>Echter Lauf ${esc(current)} ist fertig.</b> Spiel das Ergebnis und entscheide: freigeben oder verwerfen.`);
+      : `<b>„${esc((gewaehlt() || {}).name || current)}“ ist fertig</b> (echter Lauf vom ${esc(wann(current))}). Spiel das Ergebnis und entscheide: freigeben oder verwerfen.`);
     $('play2').hidden = !D.ergebnis; $('play2').href = `/ergebnis/${current}/index.html`;
     $('freigabe').hidden = $('verwerfen').hidden = ende;
   }
   if (wartet || ende) $('play').hidden = true;   // steht dann in der Leiste
-  // Demo = Aufzeichnung abspielen. Ohne Aufzeichnung erklärt der Knopf, was fehlt.
-  $('startDemo').classList.toggle('gesperrt', !AUFZ.length);
-  $('startDemo').title = AUFZ.length ? `Spielt die Aufzeichnung von Lauf ${$('aufz').value} ab (${$('tempo').value}×), ohne Modelle und ohne Kosten` : 'Noch keine Aufzeichnung: Lass einmal einen echten Lauf bis zum Ende laufen';
+  // Demo = den gewählten Lauf noch einmal abspielen. Geht nicht, erklärt der Knopf, warum.
+  const r = gewaehlt(), q = quelleVon(r);
+  $('startDemo').classList.toggle('gesperrt', !q);
+  $('startDemo').title = q ? `Spielt „${r.name || q}“ noch einmal ab, ${tempo}× so schnell, ohne Modelle und ohne Kosten`
+    : 'Dieser Lauf kam nicht bis zum Ende. Wähle links einen fertigen Lauf, um ihn als Demo abzuspielen.';
+  $('demogruppe').querySelectorAll('[data-tempo]').forEach(b => { b.classList.toggle('on', +b.dataset.tempo === tempo); b.title = `${b.dataset.tempo}× so schnell wie im Original`; });
   const fehler = PZ && !laeuft && PZ.code && !PZ.abgebrochen;
   $('startfehler').hidden = !fehler;
   if (fehler) $('startfehler').textContent = `Lauf mit Fehler beendet: ${PZ.letzte}`;
@@ -859,21 +860,26 @@ async function post(pfad, daten) {
   if (!r.ok) { alert(r.status === 409 ? await r.text() : `Fehler ${r.status}: ${await r.text()}`); return null; }
   return r.json();
 }
-// ---------------------------------------------------------------- Demo-Aufzeichnungen
-let AUFZ = [], aufzStand = 0;
+// ---------------------------------------------------------------- Laufauswahl und Demo
+let LAEUFE = [];   // aus /api/runs: id, name (Design), status, quelle, tempo, abspielbar
 const merke = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const erinnere = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
-async function ladeAufzeichnungen() {
-  AUFZ = await (await fetch('/api/aufzeichnungen')).json();
-  aufzStand = Date.now();
-  const sel = $('aufz'), vorher = sel.value || erinnere('demo-aufzeichnung');
-  const min = s => s == null ? '' : ` · ${Math.max(1, Math.round(s / 60))} min`;
-  setHtml(sel, AUFZ.map(a => `<option value="${a.id}">${a.id}${min(a.dauer)}${a.schleifen ? ' · mit Schleife' : ''}${a.ergebnis ? '' : ' · ohne Ergebnis'}</option>`).join(''));
-  if (AUFZ.some(a => a.id === vorher)) sel.value = vorher;
+let tempo = [1, 2, 4, 8].includes(+erinnere('demo-tempo')) ? +erinnere('demo-tempo') : 2;
+const ZEICHEN = { freigegeben: '✓', verworfen: '✕', wartet: '⏳', abgebrochen: '⚠', 'läuft': '●' };
+function laufText(r) {
+  const name = r.name || (r.status === 'läuft' ? 'Neuer Lauf' : 'ohne Design');
+  if (r.status === 'demo') return `▶ Demo: ${name}${r.tempo > 1 ? ` (${r.tempo}×)` : ''}`;
+  return `${ZEICHEN[r.status] || ''} ${name} · ${wann(r.id)}`;
 }
+// 2026-11-12-104606 → 12.11. 10:46
+const wann = id => { const m = id.match(/^\d{4}-(\d{2})-(\d{2})-(\d{2})(\d{2})/); return m ? `${m[2]}.${m[1]}. ${m[3]}:${m[4]}` : id; };
+const gewaehlt = () => LAEUFE.find(r => r.id === current);
+// Was die Demo abspielt: den gewählten Lauf, bei einer Demo deren Vorlage
+const quelleVon = r => !r ? null : r.status === 'demo' ? r.quelle : r.abspielbar ? r.id : null;
 async function starte(modus) {
-  if (modus === 'demo' && !AUFZ.length) {
-    alert('Noch keine Aufzeichnung. Lass einmal einen echten Lauf bis zum Ende laufen. Danach ist er hier als Demo abspielbar.');
+  const quelle = quelleVon(gewaehlt());
+  if (modus === 'demo' && !quelle) {
+    alert('Dieser Lauf kam nicht bis zum Ende und lässt sich nicht abspielen. Wähle in der Liste einen fertigen Lauf (✓, ✕ oder ⏳).');
     return;
   }
   const offen = modus === 'live' && PZ && PZ.offen_live;
@@ -884,15 +890,15 @@ async function starte(modus) {
     return;
   }
   if (modus === 'live' && !confirm('Echter Lauf mit den Modellen aus config.json. Das kostet Guthaben bei den Anbietern. Starten?')) return;
-  const z = await post('/api/start', modus === 'demo' ? { modus, quelle: $('aufz').value, tempo: +$('tempo').value } : { modus });
+  const z = await post('/api/start', modus === 'demo' ? { modus, quelle, tempo } : { modus });
   if (!z) return;
   PZ = z; follow = true; detail = false; renderStart();   // Live folgen: Der neue Lauf erscheint von selbst
   tick();
 }
 async function entscheide(aktion) {
   const frage = aktion === 'freigabe'
-    ? `Lauf ${current} freigeben? Damit hältst du fest, dass du das Ergebnis abnimmst.`
-    : `Lauf ${current} verwerfen? Damit hältst du fest, dass du das Ergebnis nicht abnimmst. Der Lauf bleibt als Beispiel in runs/.`;
+    ? `„${(gewaehlt() || {}).name || current}“ freigeben? Damit hältst du fest, dass du das Ergebnis abnimmst.`
+    : `„${(gewaehlt() || {}).name || current}“ verwerfen? Damit hältst du fest, dass du das Ergebnis nicht abnimmst. Der Lauf bleibt als Beispiel in runs/.`;
   if (!confirm(frage)) return;
   $('freigabe').disabled = $('verwerfen').disabled = true;
   const z = await post('/api/' + aktion, { lauf: current });
@@ -906,6 +912,7 @@ async function stoppe() {
   if (z) { PZ = z; renderStart(); tick(); }
 }
 
+let fehlversuche = 0;   // Eine einzelne verlorene Abfrage ist noch keine getrennte Verbindung
 async function tick() {
   try {
     PZ = await (await fetch('/api/prozess')).json();
@@ -913,20 +920,23 @@ async function tick() {
     if (!G) {
       G = await (await fetch('/api/graph')).json();
     }
-    const runs = await (await fetch('/api/runs')).json(), sel = $('run');
-    if (sel.options.length !== runs.length || Date.now() - aufzStand > 15000) await ladeAufzeichnungen();
-    if (sel.options.length !== runs.length) {
-      sel.innerHTML = runs.map(r => `<option>${esc(r)}</option>`).join('');
-      if (!current || follow) switchRun(runs[0]);
-      sel.value = current;
-    }
+    LAEUFE = await (await fetch('/api/runs')).json();
+    const sel = $('run');
+    sel.hidden = !LAEUFE.length;
+    setHtml(sel, LAEUFE.map(r => `<option value="${r.id}" title="${esc(`${r.titel || r.id} · ${r.status === 'demo' ? 'Demo-Wiedergabe' : r.status}`)}">${esc(laufText(r))}</option>`).join(''));
+    // Neuester Lauf: weiter folgen. Verschwindet der gewählte (alte Demo-Wiedergabe), zum neuesten springen.
+    if (LAEUFE.length && (!current || (follow && current !== LAEUFE[0].id) || !gewaehlt())) switchRun(LAEUFE[0].id);
+    if (current && sel.value !== current) sel.value = current;
+    renderStart();
     if (!current) { $('zustand').innerHTML = '<span class="empty">Noch kein Lauf. Starte oben einen echten Lauf. Fertige echte Läufe kannst du danach als Demo abspielen.</span>'; return; }
     D = await (await fetch('/api/run/' + current)).json();
     D.start = D.start || {};
     D.abgebrochen = (D.events[D.events.length - 1] || {}).knoten === 'orchestrator';
     render();
+    fehlversuche = 0;
   } catch (e) {
     console.error(e);
+    if (++fehlversuche < 3) return;
     $('zustand').innerHTML = '<span class="empty">Keine Verbindung. Läuft der Task „1 Dashboard starten“?</span>';
     $('zustand')._html = null;
   }
@@ -954,9 +964,7 @@ $('graphbox').onscroll = setzeZeiger;
 $('startDemo').onclick = () => starte('demo');
 $('startLive').onclick = () => starte('live');
 $('stopp').onclick = stoppe;
-$('aufz').onchange = e => { merke('demo-aufzeichnung', e.target.value); renderStart(); };
-$('tempo').onchange = e => { merke('demo-tempo', e.target.value); renderStart(); };
-$('tempo').value = ['1', '2', '4', '8'].includes(erinnere('demo-tempo')) ? erinnere('demo-tempo') : '2';
+$('demogruppe').onclick = e => { const t = e.target.dataset.tempo; if (t) { tempo = +t; merke('demo-tempo', t); renderStart(); } };
 $('freigabe').onclick = () => entscheide('freigabe');
 $('verwerfen').onclick = () => entscheide('verwerfen');
 $('mehr').onclick = () => { const zu = $('laufbox').hidden; $('laufbox').hidden = !zu; $('mehr').setAttribute('aria-expanded', zu); };

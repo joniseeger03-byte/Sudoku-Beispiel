@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Bleiglasfenster</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="spiel">
+  <h1>Sudoku</h1>
+  <div class="stufen" role="group" aria-label="Schwierigkeitsstufe">
+    <button type="button" data-stufe="leicht">Leicht</button>
+    <button type="button" data-stufe="mittel" class="aktiv">Mittel</button>
+    <button type="button" data-stufe="schwer">Schwer</button>
+  </div>
+  <div class="flaeche">
+    <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+    <div class="ziffernfeld" role="group" aria-label="Ziffernfeld">
+      <button type="button" data-digit="1">1</button>
+      <button type="button" data-digit="2">2</button>
+      <button type="button" data-digit="3">3</button>
+      <button type="button" data-digit="4">4</button>
+      <button type="button" data-digit="5">5</button>
+      <button type="button" data-digit="6">6</button>
+      <button type="button" data-digit="7">7</button>
+      <button type="button" data-digit="8">8</button>
+      <button type="button" data-digit="9">9</button>
+      <button type="button" data-digit="0" class="loeschen" aria-label="Löschen">Löschen</button>
+    </div>
+  </div>
+  <p id="meldung" class="meldung" role="status" aria-live="polite"></p>
+  <p id="sieg" class="sieg" role="status">Geschafft! Das Fenster leuchtet – Rätsel gelöst.</p>
+</main>
+<script src="board.js"></script>
+</body>
+</html>

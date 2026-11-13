@@ -17,8 +17,8 @@ Die Demo spielt einen **aufgezeichneten echten Lauf** ab: echte Modell-Antworten
 
 1. Öffne den Ordner in VS Code über **Datei → Ordner öffnen**.
 2. **Terminal → Run Task → 1 Dashboard starten**, dann <http://localhost:8000> öffnen.
-3. Wähle unter **Lauf ▾** die Aufzeichnung (*mit Schleife* zeigt einen Rücksprung im Graphen) und das Tempo.
-4. Klicke oben auf **Neuer Lauf → ▶ Demo** (oder **Terminal → Run Task → 2 Demo: Aufzeichnung abspielen**).
+3. Wähle oben im Auswahlfeld einen Lauf. Jeder heißt nach seinem Sudoku-Design, zum Beispiel *Rechenheft* oder *Art-déco-Lichtspielhaus*.
+4. Wähle daneben das Tempo (1×, 2×, 4×, 8×) und klicke **▶ Demo** (oder **Terminal → Run Task → 2 Demo: Aufzeichnung abspielen**).
 5. Am Ende: **Ergebnis spielen**. Die Demo endet an der Stelle, an der im echten Lauf du entscheidest. Zu entscheiden gibt es bei ihr nichts.
 
 **Woher die Aufzeichnungen kommen:** Jeder echte Lauf landet in `runs/<lauf>/`. Dieser Ordner kommt ins Repo, alle Läufe sind also die Beispiele des Projekts. Jeder echte Lauf, der bis zur Freigabe kam, ist als Demo abspielbar, auch auf anderen Rechnern, sobald er committet ist. Gibt es noch keinen, mach zuerst Schritt 2.
@@ -33,14 +33,14 @@ Das Dashboard ist für die Vorführung gebaut: Es zeigt wenig und erklärt auf K
 
 | Ansicht | Zeigt | Passt zu |
 |---|---|---|
-| **Teil 1 · Ein Agent** | Einen festen Agenten (die Engine) als Kette von links nach rechts: Prompt + Kontext → Modell → Antwort → Harness. Die Station, an der gerade gearbeitet wird, leuchtet. Ein Klick klappt ihren Inhalt direkt darunter auf. Darüber zeigt eine Leiste den ganzen Lauf in Stufen (Verstehen › Planen › Bauen › Prüfen › Fertigstellen); ein Klick auf einen Schritt wechselt den Agenten. | Prompt, Kontext, Harness |
+| **Teil 1 · Ein Agent** | Einen festen Agenten (die Engine) als Kette von links nach rechts: Prompt + Kontext → Modell → Antwort. Die Station, an der gerade gearbeitet wird, leuchtet. Ein Klick klappt ihren Inhalt direkt darunter auf. Darüber zeigt eine Leiste den ganzen Lauf in Stufen (Verstehen › Planen › Bauen › Prüfen › Fertigstellen); ein Klick auf einen Schritt wechselt den Agenten. | Prompt, Kontext, Modell |
 | **Teil 2 · Loop und Graph** | Den Ablauf als Graph. Ein Klick auf einen Knoten klappt seine Stationen unter dem Graphen auf, der Graph bleibt sichtbar. **Zeitleiste** oder **Live** (solange ein Agent arbeitet) ersetzen ihn, **← Graph** führt zurück. Ein orangefarbenes ! markiert Knoten, bei denen die Harness eingegriffen hat. | Loop, Graph |
 
 - Der **Info-Kreis** klappt Details und Erklärung auf.
-- Oben rechts startest du unter **Neuer Lauf** eine **▶ Demo** oder einen **▶ Echten Lauf**, während eines Laufs steht dort **■ Abbrechen**. Ein neuer echter Lauf ist gesperrt, solange ein echter Lauf auf deine Entscheidung wartet. Demos sperren nichts.
+- Oben wählst du im Auswahlfeld den Lauf. Das Zeichen davor zeigt seinen Zustand: ✓ freigegeben, ✕ verworfen, ⏳ wartet auf dich, ● läuft, ⚠ abgebrochen, ▶ Demo-Wiedergabe. **▶ Demo** spielt den gewählten Lauf im eingestellten Tempo noch einmal ab, **▶ Echter Lauf** startet einen neuen mit den Modellen. Während eines Laufs steht dort **■ Abbrechen**. Ein neuer echter Lauf ist gesperrt, solange ein echter Lauf auf deine Entscheidung wartet. Demos sperren nichts.
 - Wartet der angezeigte Lauf, erscheint darunter eine Leiste mit **Ergebnis spielen**, **✓ Freigeben** und **✕ Verwerfen**. Gestartet wird `orchestrator/run.py` (echt) oder `orchestrator/wiedergabe.py` (Demo) im Hintergrund, die Ausgabe steht in `runs/_prozess.log`. Es läuft immer höchstens ein Lauf aus dem Dashboard. Startbefehle nimmt das Dashboard nur von der eigenen Seite an, fremde Webseiten können keinen Lauf auslösen.
-- **Lauf ▾** enthält Laufauswahl, die Aufzeichnung und das Tempo für die Demo, Startbefehl und Protokoll. Das Dashboard folgt immer dem neuesten Lauf, bis du dort einen älteren wählst. Den Agenten für Teil 1 wählst du in der Stufen-Leiste.
-- Technische Befehle stehen zugeklappt bei den Bausteinen Modell und Harness.
+- **Details ▾** zeigt Startbefehl und Protokoll des gewählten Laufs. Das Dashboard folgt immer dem neuesten Lauf, bis du einen älteren wählst. Den Agenten für Teil 1 wählst du in der Stufen-Leiste.
+- Technische Befehle stehen zugeklappt beim Baustein Modell.
 
 ## Schritt 2: Echter Lauf
 
@@ -48,7 +48,7 @@ Das Dashboard ist für die Vorführung gebaut: Es zeigt wenig und erklärt auf K
 2. Prüfe die Modellnamen in `config.json`.
 3. Passe die Aufgabe in `auftrag.md` an.
 4. **2b Verbindung testen**. Jeder Anbieter muss `OK` melden. Das kostet nur wenige Tokens.
-5. Im Dashboard **Neuer Lauf → ▶ Echter Lauf** (fragt wegen der Kosten nach) oder **3 Echten Lauf starten**. **■ Abbrechen** im Dashboard oder Ctrl+C im Terminal bricht ab.
+5. Im Dashboard **▶ Echter Lauf** (fragt wegen der Kosten nach) oder **3 Echten Lauf starten**. **■ Abbrechen** im Dashboard oder Ctrl+C im Terminal bricht ab.
 
 Alles, was ein Lauf erzeugt, liegt in einem Ordner: `runs/<lauf>/`, das fertige Spiel in `runs/<lauf>/ergebnis/`. Der Orchestrator benutzt kein Git. Ins Repo kommt der Lauf mit deinem nächsten Commit.
 

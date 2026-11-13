@@ -1,0 +1,483 @@
+```html
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sudoku – Seekarte</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="karte">
+  <h1>Sudoku <span>Seekarte</span></h1>
+
+  <div class="stufen" role="group" aria-label="Stufe">
+    <span class="label">Stufe</span>
+    <button type="button" data-stufe="leicht">Leicht</button>
+    <button type="button" data-stufe="mittel" class="aktiv">Mittel</button>
+    <button type="button" data-stufe="schwer">Schwer</button>
+  </div>
+
+  <div id="meldung" class="kartusche" role="status" aria-live="polite" hidden>
+    <div>Kurs erreicht – Rätsel gelöst!</div>
+  </div>
+
+  <div class="skala">
+    <div class="rahmen">
+      <div id="brett" class="brett" role="grid" aria-label="Sudoku-Brett"></div>
+    </div>
+  </div>
+
+  <div class="werkzeuge">
+    <button type="button" id="notizen" aria-pressed="false"><span class="kompass">N</span>Notizen</button>
+    <button type="button" id="fehler">Fehler zeigen</button>
+    <button type="button" id="moegliche">Mögliche Werte</button>
+  </div>
+  <p id="status" class="status" aria-live="polite">Feld wählen und Ziffer setzen.</p>
+
+  <div class="ziffern" id="ziffern">
+    <button type="button" data-digit="1">1</button>
+    <button type="button" data-digit="2">2</button>
+    <button type="button" data-digit="3">3</button>
+    <button type="button" data-digit="4">4</button>
+    <button type="button" data-digit="5">5</button>
+    <button type="button" data-digit="6">6</button>
+    <button type="button" data-digit="7">7</button>
+    <button type="button" data-digit="8">8</button>
+    <button type="button" data-digit="9">9</button>
+    <button type="button" data-digit="0" aria-label="Löschen">✕</button>
+  </div>
+</main>
+<script src="board.js"></script>
+</body>
+</html>
+```
+
+```javascript
+(function () {
+  'use strict';
+  var brett = document.getElementById('brett');
+  var meldung = document.getElementById('meldung');
+  var status = document.getElementById('status');
+  var notizBtn = document.getElementById('notizen');
+  var cells = [];
+  var puzzle = [], solution = [], values = [], notes = [];
+  var selected = -1;
+  var notesMode = false;
+  var showWrong = false;
+  var loadId = 0;
+
+  for (var i = 0; i < 81; i++) {
+    var c = document.createElement('div');
+    c.className = 'feld';
+    c.setAttribute('role', 'gridcell');
+    c.dataset.index = i;
+    var r = Math.floor(i / 9), col = i % 9;
+    var blk = Math.floor(r / 3) * 3 + Math.floor(col / 3);
+    if (blk % 2 === 1) c.classList.add('flach');
+    if (col % 3 === 0 && col > 0) c.classList.add('links');
+    if (r % 3 === 0 && r > 0) c.classList.add('oben');
+    brett.appendChild(c);
+    cells.push(c);
+  }
+
+  function peers(a, b) {
+    var ra = Math.floor(a / 9), ca = a % 9, rb = Math.floor(b / 9), cb = b % 9;
+    return ra === rb || ca === cb ||
+      (Math.floor(ra / 3) === Math.floor(rb / 3) && Math.floor(ca / 3) === Math.floor(cb / 3));
+  }
+
+  function conflicts(g) {
+    var s = {};
+    for (var a = 0; a < 81; a++) {
+      if (!g[a]) continue;
+      for (var b = a + 1; b < 81; b++) {
+        if (g[b] === g[a] && peers(a, b)) { s[a] = 1; s[b] = 1; }
+      }
+    }
+    return s;
+  }
+
+  function candidates(idx) {
+    var out = [];
+    for (var d = 1; d <= 9; d++) {
+      var ok = true;
+      for (var j = 0; j < 81; j++) {
+        if (j !== idx && values[j] === d && peers(idx, j)) { ok = false; break; }
+      }
+      if (ok) out.push(d);
+    }
+    return out;
+  }
+
+  function render() {
+    var cf = conflicts(values);
+    var full = values.length === 81 && values.every(function (v) { return v > 0; });
+    var solved = full && Object.keys(cf).length === 0 &&
+      values.every(function (v, k) { return v === solution[k]; });
+    var selVal = selected >= 0 ? values[selected] : 0;
+    for (var i = 0; i < 81; i++) {
+      var el = cells[i], v = values[i] || 0;
+      el.classList.toggle('vorgabe', puzzle[i] !== 0 && !!puzzle[i]);
+      el.classList.toggle('eigen', !puzzle[i] && v > 0);
+      el.classList.toggle('konflikt', !!cf[i]);
+      el.classList.toggle('falsch', showWrong && !puzzle[i] && v > 0 && v !== solution[i]);
+      el.classList.toggle('gewaehlt', i === selected);
+      el.classList.toggle('nachbar', selected >= 0 && i !== selected && peers(selected, i));
+      el.classList.toggle('gleich', selVal > 0 && v === selVal);
+      if (v > 0) {
+        if (el.textContent !== String(v) || el.firstElementChild) el.textContent = v;
+      } else if (notes[i] && notes[i].length) {
+        var h = '<span class="notiz">';
+        for (var d = 1; d <= 9; d++) h += '<i>' + (notes[i].indexOf(d) >= 0 ? d : '') + '</i>';
+        el.innerHTML = h + '</span>';
+      } else {
+        el.textContent = '';
+      }
+    }
+    document.body.classList.toggle('geloest', solved);
+    meldung.hidden = !solved;
+    if (solved) status.textContent = 'Gelöst!';
+  }
+
+  function select(i) {
+    selected = Math.max(0, Math.min(80, i));
+    render();
+  }
+
+  function enter(d) {
+    if (selected < 0 || document.body.classList.contains('geloest') || !values.length) return;
+    if (puzzle[selected]) return;
+    if (d === 0) {
+      values[selected] = 0; notes[selected] = [];
+    } else if (notesMode) {
+      if (values[selected]) return;
+      var n = notes[selected] || [];
+      var p = n.indexOf(d);
+      if (p >= 0) n.splice(p, 1); else n.push(d);
+      notes[selected] = n;
+    } else {
+      values[selected] = d; notes[selected] = [];
+    }
+    render();
+  }
+
+  function setNotes(on) {
+    notesMode = on;
+    notizBtn.setAttribute('aria-pressed', on);
+    notizBtn.classList.toggle('an', on);
+    document.body.classList.toggle('notizmodus', on);
+  }
+
+  brett.addEventListener('click', function (e) {
+    var t = e.target.closest('.feld');
+    if (t) select(+t.dataset.index);
+  });
+
+  document.getElementById('ziffern').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-digit]');
+    if (b) enter(+b.dataset.digit);
+  });
+
+  document.querySelectorAll('button[data-stufe]').forEach(function (b) {
+    b.addEventListener('click', function () { neu(b.dataset.stufe); });
+  });
+
+  notizBtn.addEventListener('click', function () { setNotes(!notesMode); });
+  document.getElementById('fehler').addEventListener('click', function () {
+    showWrong = !showWrong;
+    var n = Object.keys(conflicts(values)).length;
+    status.textContent = n ? n + ' Felder im Konflikt.' : 'Keine Konflikte.';
+    render();
+  });
+  document.getElementById('moegliche').addEventListener('click', function () {
+    if (selected < 0) { status.textContent = 'Erst ein Feld wählen.'; return; }
+    if (values[selected]) { status.textContent = 'Feld ist bereits belegt.'; return; }
+    var c = candidates(selected);
+    status.textContent = 'Möglich: ' + (c.length ? c.join(' ') : 'keine');
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k >= '1' && k <= '9') { enter(+k); e.preventDefault(); }
+    else if (k === 'Delete' || k === 'Backspace') { enter(0); e.preventDefault(); }
+    else if (k === 'n' || k === 'N') { setNotes(!notesMode); }
+    else if (k.indexOf('Arrow') === 0) {
+      e.preventDefault();
+      if (selected < 0) { select(0); return; }
+      var r = Math.floor(selected / 9), c = selected % 9;
+      if (k === 'ArrowUp') r = Math.max(0, r - 1);
+      if (k === 'ArrowDown') r = Math.min(8, r + 1);
+      if (k === 'ArrowLeft') c = Math.max(0, c - 1);
+      if (k === 'ArrowRight') c = Math.min(8, c + 1);
+      select(r * 9 + c);
+    }
+  });
+
+  function neu(stufe) {
+    var id = ++loadId;
+    document.querySelectorAll('button[data-stufe]').forEach(function (b) {
+      b.classList.toggle('aktiv', b.dataset.stufe === stufe);
+    });
+    status.textContent = 'Lade Rätsel …';
+    fetch('api/neu?stufe=' + stufe)
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        if (id !== loadId) return;
+        puzzle = d.puzzle.slice();
+        solution = d.solution.slice();
+        values = d.puzzle.slice();
+        notes = [];
+        selected = -1;
+        showWrong = false;
+        document.body.classList.remove('geloest');
+        status.textContent = 'Feld wählen und Ziffer setzen.';
+        render();
+      })
+      .catch(function () {
+        if (id === loadId) status.textContent = 'Rätsel konnte nicht geladen werden.';
+      });
+  }
+
+  neu('mittel');
+})();
+```
+
+```css
+:root {
+  --land: #E9DFC8;
+  --tief: #FBFCF8;
+  --flach: #CFE3EA;
+  --tusche: #14263A;
+  --magenta: #C2185B;
+  --mflaeche: #F6C9DE;
+  --linie: #8FA9B8;
+  --eigen: #1F5E9C;
+  --konflikt: #F2A3C3;
+  --notiz: #4A6A80;
+  --schrift: "Helvetica Neue", Arial, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--land);
+  color: var(--tusche);
+  font-family: var(--schrift);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.karte {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 10px 24px;
+}
+
+h1 {
+  margin: 4px 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+h1 span { font-weight: 500; color: var(--magenta); margin-left: 6px; }
+
+.label {
+  display: block;
+  grid-column: 1 / -1;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.stufen {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.stufen button {
+  min-height: 44px;
+  font: 700 13px var(--schrift);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--tief);
+  color: var(--tusche);
+  border: 2px solid var(--tusche);
+  border-radius: 0;
+  cursor: pointer;
+}
+.stufen button.aktiv { background: var(--tusche); color: var(--tief); }
+
+.kartusche {
+  margin: 0 0 10px;
+  padding: 3px;
+  border: 3px solid var(--magenta);
+  background: var(--tief);
+}
+.kartusche[hidden] { display: none; }
+.kartusche div {
+  border: 1px solid var(--magenta);
+  padding: 10px;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 14px;
+  color: var(--magenta);
+}
+
+/* Gradskala als Randdekor */
+.skala {
+  padding: 14px;
+  background:
+    repeating-linear-gradient(90deg, var(--tusche) 0 1px, transparent 1px 10px) top / 100% 8px no-repeat,
+    repeating-linear-gradient(90deg, var(--tusche) 0 1px, transparent 1px 10px) bottom / 100% 8px no-repeat,
+    repeating-linear-gradient(0deg, var(--tusche) 0 1px, transparent 1px 10px) left / 8px 100% no-repeat,
+    repeating-linear-gradient(0deg, var(--tusche) 0 1px, transparent 1px 10px) right / 8px 100% no-repeat;
+}
+
+.rahmen {
+  border: 3px solid var(--tusche);
+  padding: 1px;
+  background: var(--land);
+}
+.brett {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  border: 1px solid var(--tusche);
+  background: var(--tief);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.feld {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tief);
+  border-left: 1px solid var(--linie);
+  border-top: 1px solid var(--linie);
+  font-size: clamp(18px, 6.2vw, 30px);
+  font-weight: 500;
+  font-style: italic;
+  color: var(--eigen);
+  cursor: pointer;
+  position: relative;
+  min-width: 0;
+}
+.feld:nth-child(9n + 1) { border-left: 0; }
+.feld:nth-child(-n + 9) { border-top: 0; }
+.feld.links { border-left: 3px solid var(--tusche); }
+.feld.oben { border-top: 3px solid var(--tusche); }
+.feld.flach { background: var(--flach); }
+
+.feld.vorgabe { font-style: normal; font-weight: 700; color: var(--tusche); }
+
+.feld.nachbar { background-image: linear-gradient(rgba(194, 24, 91, .08), rgba(194, 24, 91, .08)); }
+
+.feld.gleich { text-decoration: underline; text-decoration-color: var(--magenta); text-decoration-thickness: 3px; text-underline-offset: 4px; }
+
+.feld.konflikt {
+  background-color: var(--konflikt);
+  background-image: repeating-linear-gradient(45deg, rgba(194, 24, 91, .22) 0 4px, transparent 4px 8px);
+  color: var(--magenta);
+  font-weight: 700;
+}
+
+.feld.falsch { box-shadow: inset 0 -4px 0 var(--magenta); }
+
+.feld.gewaehlt {
+  background-color: var(--mflaeche);
+  background-image: none;
+  box-shadow: inset 0 0 0 3px var(--magenta);
+  z-index: 1;
+}
+.feld.gewaehlt.konflikt { background-color: var(--konflikt); }
+
+.notiz {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--notiz);
+  font-size: clamp(8px, 2.4vw, 12px);
+  line-height: 1;
+  padding: 1px;
+}
+.notiz i { display: flex; align-items: center; justify-content: center; font-style: italic; }
+
+body.geloest .rahmen { border-color: var(--magenta); }
+body.geloest .feld,
+body.geloest .feld.flach { background: var(--tief); background-image: none; box-shadow: none; text-decoration: none; }
+
+.werkzeuge {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+.werkzeuge button {
+  min-height: 48px;
+  font: 700 12px var(--schrift);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: var(--tief);
+  color: var(--tusche);
+  border: 2px solid var(--tusche);
+  border-radius: 0;
+  cursor: pointer;
+}
+.werkzeuge button.an { border-color: var(--magenta); color: var(--magenta); }
+.kompass {
+  display: none;
+  width: 18px; height: 18px;
+  margin-right: 6px;
+  border: 2px solid var(--magenta);
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  vertical-align: middle;
+}
+.werkzeuge button.an .kompass { display: inline-block; }
+
+.status {
+  min-height: 20px;
+  margin: 8px 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--notiz);
+}
+
+.ziffern {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.ziffern button {
+  min-width: 48px;
+  min-height: 48px;
+  font: 700 22px var(--schrift);
+  background: var(--tief);
+  color: var(--tusche);
+  border: 2px solid var(--tusche);
+  border-radius: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ziffern button:active { background: var(--mflaeche); }
+.ziffern button[data-digit="0"] { color: var(--magenta); }
+
+button:focus-visible { outline: 3px solid var(--magenta); outline-offset: 2px; }
+
+@media (max-width: 400px) {
+  .skala { padding: 11px; }
+}
+```

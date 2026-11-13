@@ -107,9 +107,53 @@ def lies(p, fallback=""):
     return p.read_text(encoding="utf-8", errors="replace") if p.exists() else fallback
 
 
+def designname(d):
+    """Der Name des Sudoku-Designs, z. B. „Lichthaus“: erste Überschrift in design.md."""
+    zeile = next((z for z in lies(d / "design.md").splitlines() if z.strip()), "")
+    return re.sub(r"^#+\s*(Design:\s*)?", "", zeile).strip() or None
+
+
+def laufliste():
+    """Alle Läufe für die Auswahl im Dashboard, neueste zuerst: Name, Zustand, ob als Demo abspielbar."""
+    if not RUNS.exists():
+        return []
+    abspielbar = {a["id"] for a in wiedergabe.aufzeichnungen(RUNS)}
+    out = []
+    for d in sorted((p for p in RUNS.iterdir() if p.is_dir() and RUN_ID.match(p.name)), reverse=True):
+        try:
+            start = json.loads(lies(d / "start.json", "{}") or "{}")
+        except json.JSONDecodeError:
+            start = {}
+        zeilen = [z for z in lies(d / "events.jsonl").splitlines() if z.strip()]
+        try:
+            letzt = json.loads(zeilen[-1]) if zeilen else {}
+        except json.JSONDecodeError:
+            letzt = {}   # wird gerade geschrieben
+        quelle = start.get("quelle")
+        if quelle:
+            status = "demo"
+        elif letzt.get("knoten") == "freigabe":
+            status = {"run": "wartet", "ok": "freigegeben", "fail": "verworfen"}.get(letzt.get("status"), "läuft")
+        elif letzt.get("knoten") == "orchestrator":
+            status = "abgebrochen"
+        else:
+            status = "läuft"
+        titel = designname(RUNS / quelle if quelle else d)
+        # Kurzname vor dem Doppelpunkt: „Rechenheft: Kästchenpapier, …“ → „Rechenheft“
+        out.append({"id": d.name, "name": titel and titel.split(":")[0].strip(), "titel": titel, "status": status,
+                    "quelle": quelle, "tempo": start.get("tempo"), "abspielbar": d.name in abspielbar})
+    return out
+
+
 def lauf(d):
     log = d / "events.jsonl"
-    events = [json.loads(x) for x in lies(log).splitlines() if x.strip()]
+    events = []
+    for x in lies(log).splitlines():
+        try:
+            events.append(json.loads(x)) if x.strip() else None
+        except json.JSONDecodeError:
+            pass   # letzte Zeile wird gerade geschrieben
+
     aufrufe = {}
     for p in sorted((d / "aufrufe").glob("*.json")):
         try:
@@ -122,7 +166,10 @@ def lauf(d):
         rec.pop("anfrage", None)
         aufrufe[rec["id"]] = rec
     live = {p.stem: lies(p)[-30000:] for p in sorted((d / "live").glob("*.txt"))}
-    start = json.loads(lies(d / "start.json", "{}"))
+    try:
+        start = json.loads(lies(d / "start.json", "{}") or "{}")
+    except json.JSONDecodeError:
+        start = {}   # wird gerade geschrieben, beim nächsten Takt ist sie vollständig
     dateien = {p.name: lies(p) for p in sorted(d.glob("*.md"))}
     # Der Projektordner füllt sich schon während des Laufs. Spielbar ist er erst, wenn der Abnahmetest bestanden ist.
     fertig = any(e.get("knoten") == "freigabe" for e in events)
@@ -150,8 +197,7 @@ class Handler(BaseHTTPRequestHandler):
             g["prompts"] = {k["prompt"]: lies(ROOT / "prompts" / k["prompt"]) for k in graph.KNOTEN.values() if "prompt" in k}
             return self.json(g)
         if parts == ["api", "runs"]:
-            ids = sorted((p.name for p in RUNS.iterdir() if p.is_dir() and RUN_ID.match(p.name)), reverse=True) if RUNS.exists() else []
-            return self.json(ids)
+            return self.json(laufliste())
         if len(parts) == 3 and parts[:2] == ["api", "run"] and RUN_ID.match(parts[2]) and (RUNS / parts[2]).is_dir():
             return self.json(lauf(RUNS / parts[2]))
         if len(parts) == 4 and parts[:2] == ["api", "aufruf"] and RUN_ID.match(parts[2]) and FILE_NAME.match(parts[3]):
@@ -170,8 +216,6 @@ class Handler(BaseHTTPRequestHandler):
                                    capture_output=True, encoding="utf-8", errors="replace", timeout=60)
                 if r.returncode == 0:
                     return self.send(r.stdout.encode("utf-8"))
-        if parts == ["api", "aufzeichnungen"]:
-            return self.json([{k: v for k, v in a.items() if k != "pfad"} for a in wiedergabe.aufzeichnungen(RUNS)])
         if parts == ["api", "prozess"]:
             return self.json({**PROZESS.zustand(), "offen_live": offener_echter_lauf()})
         self.send(b"Nicht gefunden", "text/plain; charset=utf-8", 404)
@@ -194,7 +238,8 @@ class Handler(BaseHTTPRequestHandler):
                 liste = [a["id"] for a in wiedergabe.aufzeichnungen(RUNS)]
                 if not liste:
                     return self.send("Noch keine Aufzeichnung. Lass einmal einen echten Lauf bis zur Freigabe laufen.".encode("utf-8"), "text/plain; charset=utf-8", 409)
-                quelle = quelle if quelle in liste else liste[0]
+                if quelle not in liste:
+                    return self.send(f"Lauf {quelle} kam nicht bis zum Ende und lässt sich nicht abspielen.".encode("utf-8"), "text/plain; charset=utf-8", 409)
                 if tempo not in wiedergabe.TEMPI:
                     return self.send(b"tempo: 1, 2, 4 oder 8", "text/plain; charset=utf-8", 400)
             offen = offener_echter_lauf() if modus == "live" else None
